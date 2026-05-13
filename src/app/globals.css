@@ -584,4 +584,24 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
   /* Login page — centered card */
   .pdl-login { padding-top: 80px; }
   .pdl-login-logo { font-size: 28px; }
+
+  /* Typography scale */
+  .pdl-cart-title { font-size: 32px; }
+  .pdl-prodpage-title { font-size: 28px; }
+  .pdl-section-head h2 { font-size: 24px; }
+}
+
+/* Hover states — only on pointer devices at desktop width */
+@media (min-width: 768px) and (hover: hover) {
+  .pdl-prod { cursor: pointer; transition: transform 0.18s, box-shadow 0.18s; }
+  .pdl-prod:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(42,36,25,0.10); }
+
+  .pdl-col-card { transition: filter 0.18s; }
+  .pdl-col-card:hover .pdl-img { filter: brightness(0.95); }
+
+  .pdl-gender-card { transition: filter 0.18s; }
+  .pdl-gender-card:hover .pdl-img { filter: brightness(0.93); }
+
+  .pdl-col-prod { cursor: pointer; transition: transform 0.18s; }
+  .pdl-col-prod:hover { transform: translateY(-2px); }
 }
