@@ -42,7 +42,7 @@ export default function ColecaoPage() {
         </div>
       </div>
 
-      <div className="pdl-coll-hero">
+      <div className="pdl-coll-hero pdl-colpage-hero">
         <PdlImg tint={c.tint} label={`editorial · ${c.name.join(' ').toLowerCase()}`} style={{ position: 'absolute', inset: 0 }} />
         <div className="pdl-coll-hero-overlay">
           <div className="pdl-coll-hero-top">
@@ -58,43 +58,50 @@ export default function ColecaoPage() {
         </div>
       </div>
 
-      <div className="pdl-coll-intro">
-        <p>{c.intro}</p>
-      </div>
-
-      <div className="pdl-coll-filters">
-        {filters.map(f => (
-          <button key={f} className={`pdl-chip ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
-            {f}
-          </button>
-        ))}
-      </div>
-
-      <div className="pdl-coll-info-row">
-        <span>{c.count} peças · {c.name.join(' ').toLowerCase()}</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          ordenar <IconChevronDown size={12} />
-        </span>
-      </div>
-
-      <div className="pdl-coll-grid">
-        {c.products.map(p => (
-          <div key={p.id} className="pdl-prod" onClick={() => router.push(`/produto/${p.id}`)}>
-            <PdlImg tint={p.tint} label={p.label} />
-            <div className="pdl-prod-name">{p.name}</div>
-            <div className="pdl-prod-meta">
-              <span className="pdl-prod-col">{c.name.join(' ')}</span>
-              <span className="pdl-prod-price">{p.price}</span>
+      <div className="pdl-sidebar-layout">
+        <div className="pdl-sidebar">
+          <div className="pdl-sidebar-title">{c.name[0]} <em>{c.name[1]}</em></div>
+          <div className="pdl-sidebar-intro">{c.intro}</div>
+          <div className="pdl-sidebar-filter-label">filtrar por</div>
+          <div className="pdl-sidebar-filters">
+            {filters.map(f => (
+              <div key={f} className={`pdl-sidebar-filter ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>{f}</div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="pdl-coll-filters">
+            {filters.map(f => (
+              <button key={f} className={`pdl-chip ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
+                {f}
+              </button>
+            ))}
+          </div>
+          <div className="pdl-coll-info-row">
+            <span>{c.count} peças · {c.name.join(' ').toLowerCase()}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              ordenar <IconChevronDown size={12} />
+            </span>
+          </div>
+          <div className="pdl-coll-grid">
+            {c.products.map(p => (
+              <div key={p.id} className="pdl-prod" onClick={() => router.push(`/produto/${p.id}`)}>
+                <PdlImg tint={p.tint} label={p.label} />
+                <div className="pdl-prod-name">{p.name}</div>
+                <div className="pdl-prod-meta">
+                  <span className="pdl-prod-col">{c.name.join(' ')}</span>
+                  <span className="pdl-prod-price">{p.price}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: '40px 0', textAlign: 'center' }}>
+            <div className="pdl-eyebrow" style={{ marginBottom: 10 }}>fim da coleção</div>
+            <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 16, color: 'var(--ink-soft)' }}>
+              Cada peça é feita em pequeno lote.<br />
+              Quando acaba, vira memória.
             </div>
           </div>
-        ))}
-      </div>
-
-      <div style={{ padding: '40px 22px', textAlign: 'center' }}>
-        <div className="pdl-eyebrow" style={{ marginBottom: 10 }}>fim da coleção</div>
-        <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 16, color: 'var(--ink-soft)' }}>
-          Cada peça é feita em pequeno lote.<br />
-          Quando acaba, vira memória.
         </div>
       </div>
 

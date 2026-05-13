@@ -532,4 +532,27 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
 
   /* Home — Instagram 6-column */
   .pdl-insta-grid { grid-template-columns: repeat(6, 1fr); }
+
+  /* Sidebar layout for collection + gender pages */
+  .pdl-sidebar-layout { display: grid; grid-template-columns: 220px 1fr; gap: 48px; align-items: start; margin-top: 32px; }
+  .pdl-sidebar { position: sticky; top: 80px; }
+  .pdl-sidebar-title { font-family: var(--serif); font-size: 20px; margin-bottom: 8px; }
+  .pdl-sidebar-title em { font-style: italic; color: var(--muted); }
+  .pdl-sidebar-intro { font-family: var(--editorial); font-style: italic; font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 20px; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+  .pdl-sidebar-filter-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; font-weight: 600; }
+  .pdl-sidebar-filters { display: flex; flex-direction: column; gap: 4px; }
+  .pdl-sidebar-filter { font-size: 13px; color: var(--ink-soft); padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: background 0.12s; }
+  .pdl-sidebar-filter:hover, .pdl-sidebar-filter.active { background: var(--cream-deep); color: var(--ink); }
+
+  /* Collection/gender hero shorter on desktop */
+  .pdl-colpage-hero { height: 240px !important; }
+  .pdl-genpage-hero { height: 200px !important; }
+
+  /* Hide inline filter chips on desktop (replaced by sidebar) */
+  .pdl-coll-filters { display: none; }
+  .pdl-coll-info-row { display: none; }
+
+  /* Product grid 3-column on desktop listing pages */
+  .pdl-coll-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .pdl-coll-grid .pdl-prod { flex: none; width: auto; }
 }

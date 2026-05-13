@@ -46,7 +46,7 @@ export default function GeneroPage() {
         </div>
       </div>
 
-      <div className="pdl-coll-hero" style={{ height: 280 }}>
+      <div className="pdl-coll-hero pdl-genpage-hero" style={{ height: 280 }}>
         <PdlImg tint={g.tint} label={`${g.label.join(' ').toLowerCase()} · todos os produtos`} style={{ position: 'absolute', inset: 0 }} />
         <div className="pdl-coll-hero-overlay">
           <div className="pdl-coll-hero-top">
@@ -62,45 +62,52 @@ export default function GeneroPage() {
         </div>
       </div>
 
-      <div className="pdl-coll-intro">
-        <p>{g.intro}</p>
-      </div>
-
-      <div className="pdl-coll-filters">
-        {filters.map(f => (
-          <button key={f} className={`pdl-chip ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
-            {f}
-          </button>
-        ))}
-      </div>
-
-      <div className="pdl-coll-info-row">
-        <span>{products.length} peças</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-          ordenar <IconChevronDown size={12} />
-        </span>
-      </div>
-
-      <div className="pdl-coll-grid">
-        {products.map(p => (
-          <div key={p.id} className="pdl-prod" onClick={() => router.push(`/produto/${p.id}`)}>
-            <PdlImg tint={p.tint} label={p.label} />
-            <div className="pdl-prod-name">{p.name}</div>
-            <div className="pdl-prod-meta">
-              <span className="pdl-prod-col">{p.colName}</span>
-              <span className="pdl-prod-price">{p.price}</span>
+      <div className="pdl-sidebar-layout">
+        <div className="pdl-sidebar">
+          <div className="pdl-sidebar-title">{g.label[0]} <em>{g.label[1]}</em></div>
+          <div className="pdl-sidebar-intro">{g.intro}</div>
+          <div className="pdl-sidebar-filter-label">filtrar por</div>
+          <div className="pdl-sidebar-filters">
+            {filters.map(f => (
+              <div key={f} className={`pdl-sidebar-filter ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>{f}</div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div className="pdl-coll-filters">
+            {filters.map(f => (
+              <button key={f} className={`pdl-chip ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
+                {f}
+              </button>
+            ))}
+          </div>
+          <div className="pdl-coll-info-row">
+            <span>{products.length} peças</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              ordenar <IconChevronDown size={12} />
+            </span>
+          </div>
+          <div className="pdl-coll-grid">
+            {products.map(p => (
+              <div key={p.id} className="pdl-prod" onClick={() => router.push(`/produto/${p.id}`)}>
+                <PdlImg tint={p.tint} label={p.label} />
+                <div className="pdl-prod-name">{p.name}</div>
+                <div className="pdl-prod-meta">
+                  <span className="pdl-prod-col">{p.colName}</span>
+                  <span className="pdl-prod-price">{p.price}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding: '36px 0', textAlign: 'center' }}>
+            <div className="pdl-eyebrow" style={{ marginBottom: 10 }}>conheça também</div>
+            <div
+              style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 16, color: 'var(--ink-soft)', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 4 }}
+              onClick={() => router.push(`/colecao/${g.collections[0]}`)}
+            >
+              A coleção {COLLECTIONS[g.collections[0]].name.join(' ')}
             </div>
           </div>
-        ))}
-      </div>
-
-      <div style={{ padding: '36px 22px', textAlign: 'center' }}>
-        <div className="pdl-eyebrow" style={{ marginBottom: 10 }}>conheça também</div>
-        <div
-          style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 16, color: 'var(--ink-soft)', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 4 }}
-          onClick={() => router.push(`/colecao/${g.collections[0]}`)}
-        >
-          A coleção {COLLECTIONS[g.collections[0]].name.join(' ')}
         </div>
       </div>
 
