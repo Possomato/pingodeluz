@@ -565,4 +565,23 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
   /* Hide sticky mobile CTA on desktop — button is inline in right panel */
   .pdl-prodpage-cta-desktop { display: block; }
   .pdl-prodpage-cta { display: none; }
+
+  /* Cart — centered narrow */
+  .pdl-cart { max-width: 640px; margin: 0 auto; }
+
+  /* Checkout — centered, wider form */
+  .pdl-checkout { max-width: 640px; margin: 0 auto; }
+
+  /* Confirmation — wider */
+  .pdl-confirm { max-width: 560px; margin: 0 auto; }
+
+  /* Profile logged-in — two column */
+  .pdl-profile { max-width: 900px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+  .pdl-profile-hero { grid-column: 1 / -1; }
+  .pdl-profile-stats { grid-column: 1 / -1; }
+  .pdl-logout { grid-column: 1 / -1; }
+
+  /* Login page — centered card */
+  .pdl-login { padding-top: 80px; }
+  .pdl-login-logo { font-size: 28px; }
 }
