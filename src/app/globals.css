@@ -504,4 +504,32 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
 
   /* Show home top-padding offset since pdl-back-bar is hidden */
   .pdl-welcome { padding-top: 48px; }
+
+  /* Home — gender cards side by side */
+  .pdl-genders { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pdl-gender-card { height: 420px; }
+
+  /* Home — best sellers 4-column grid */
+  .pdl-products { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; overflow: visible; padding-bottom: 0; }
+  .pdl-prod { flex: none; width: auto; }
+
+  /* Home — welcome section wider */
+  .pdl-welcome { text-align: center; padding: 64px 80px 40px; }
+  .pdl-welcome h1 { font-size: 36px; }
+
+  /* Home — manifesto bigger quote */
+  .pdl-manifesto .quote { font-size: 24px; max-width: 640px; margin: 0 auto; }
+
+  /* Home — collections side by side */
+  .pdl-collections { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pdl-col-card { height: 400px; }
+
+  /* Home — age filters row stays horizontal, just wider gap */
+  .pdl-ages { gap: 32px; }
+
+  /* Home — testimonial wider */
+  .pdl-test-card { max-width: 640px; margin: 0 auto; padding: 36px 48px; }
+
+  /* Home — Instagram 6-column */
+  .pdl-insta-grid { grid-template-columns: repeat(6, 1fr); }
 }
