@@ -6,7 +6,7 @@ import PdlDrawer from '@/components/PdlDrawer';
 import PdlFooter from '@/components/PdlFooter';
 import PdlImg from '@/components/PdlImg';
 import { IconChevronLeft, IconSearch, IconBag, IconChevronDown } from '@/components/Icons';
-import { COLLECTIONS } from '@/lib/data';
+import { getCollections } from '@/lib/data';
 import { useCart } from '@/context/CartContext';
 
 export default function ColecaoPage() {
@@ -18,7 +18,8 @@ export default function ColecaoPage() {
   const [scrolled, setScrolled] = useState(false);
   const [filter, setFilter] = useState('todas');
 
-  const c = COLLECTIONS[id] || COLLECTIONS.jardim;
+  const collections = getCollections();
+  const c = collections[id] || collections.jardim;
   const filters = ['todas', '0–2 anos', '3–6 anos', '7–12 anos', 'vestidos', 'conjuntos', 'sob encomenda'];
 
   useEffect(() => {

@@ -3,6 +3,7 @@ import { Lora, Nunito_Sans } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { UserProvider } from "@/context/UserContext";
+import { AdminProvider } from "@/context/AdminContext";
 
 const lora = Lora({
   variable: "--font-lora",
@@ -34,7 +35,9 @@ export default function RootLayout({
       <body>
         <CartProvider>
           <UserProvider>
-            {children}
+            <AdminProvider>
+              {children}
+            </AdminProvider>
           </UserProvider>
         </CartProvider>
       </body>

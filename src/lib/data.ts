@@ -10,7 +10,10 @@ export interface Product {
   desc?: string;
   sizes?: string[];
   unavail?: string[];
+  stock?: Record<string, number>; // size → quantity; 0 = unavailable
   galleryLabels?: string[];
+  imageUrl?: string; // external photo URL (admin-set)
+  gender?: 'meninas' | 'meninos' | 'unissex';
 }
 
 export interface Collection {
@@ -21,6 +24,7 @@ export interface Collection {
   intro: string;
   count: number;
   products: Product[];
+  imageUrl?: string;
 }
 
 export interface GenderData {
@@ -123,13 +127,33 @@ export function formatPrice(n: number): string {
 }
 
 export function getProductById(id: string) {
-  // Check HOME_PRODUCTS first
-  const hp = HOME_PRODUCTS.find(p => p.id === id);
+  const catalog = getCatalog();
+  const hp = catalog.find(p => p.id === id);
   if (hp) return hp;
-  // Then check all collections
-  for (const col of Object.values(COLLECTIONS)) {
+  const cols = getCollections();
+  for (const col of Object.values(cols)) {
     const p = col.products.find(p => p.id === id);
     if (p) return p;
   }
   return HOME_PRODUCTS[0];
+}
+
+export function getCatalog(): Product[] {
+  if (typeof window === 'undefined') return HOME_PRODUCTS;
+  try {
+    const saved = localStorage.getItem('pdl_admin_catalog');
+    return saved ? JSON.parse(saved) : HOME_PRODUCTS;
+  } catch {
+    return HOME_PRODUCTS;
+  }
+}
+
+export function getCollections(): Record<string, Collection> {
+  if (typeof window === 'undefined') return COLLECTIONS;
+  try {
+    const saved = localStorage.getItem('pdl_admin_collections');
+    return saved ? JSON.parse(saved) : COLLECTIONS;
+  } catch {
+    return COLLECTIONS;
+  }
 }
