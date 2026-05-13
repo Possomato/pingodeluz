@@ -30,7 +30,10 @@ export function ProductForm({ initial, onSave }: {
 
   const toggleSize = (s: string) => {
     const has = form.sizes?.includes(s);
-    set('sizes', has ? form.sizes!.filter(x => x !== s) : [...(form.sizes ?? []), s]);
+    const nextSizes = has ? form.sizes!.filter(x => x !== s) : [...(form.sizes ?? []), s];
+    set('sizes', nextSizes);
+    const stock = form.stock ?? {};
+    set('unavail', nextSizes.filter(sz => !stock[sz] || stock[sz] === 0));
   };
 
   const setStock = (s: string, val: number) => {

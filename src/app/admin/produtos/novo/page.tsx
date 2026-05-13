@@ -18,7 +18,7 @@ export default function NewProductPage() {
       </div>
       <ProductForm
         initial={{}}
-        onSave={p => { addProduct(p as Omit<Product, 'id'>); router.push('/admin/produtos'); }}
+        onSave={p => { addProduct(p as Omit<Product, 'id'>); setTimeout(() => router.push('/admin/produtos'), 1500); }}
       />
     </AdminLayout>
   );
