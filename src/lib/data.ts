@@ -24,6 +24,7 @@ export interface Collection {
   intro: string;
   count: number;
   products: Product[];
+  imageUrl?: string;
 }
 
 export interface GenderData {
