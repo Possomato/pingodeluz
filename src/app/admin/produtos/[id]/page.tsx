@@ -36,7 +36,7 @@ export function ProductForm({ initial, onSave }: {
   const setStock = (s: string, val: number) => {
     const next = { ...(form.stock ?? {}), [s]: val };
     set('stock', next);
-    const ua = Object.entries(next).filter(([, v]) => v === 0).map(([k]) => k);
+    const ua = (form.sizes ?? SIZES).filter(sz => !next[sz] || next[sz] === 0);
     set('unavail', ua);
   };
 
@@ -164,7 +164,10 @@ export default function EditProductPage() {
       </div>
       <ProductForm
         initial={product}
-        onSave={patch => { updateProduct(id, patch); router.push('/admin/produtos'); }}
+        onSave={patch => {
+          updateProduct(id, patch);
+          setTimeout(() => router.push('/admin/produtos'), 1500);
+        }}
       />
     </AdminLayout>
   );
