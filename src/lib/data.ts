@@ -10,7 +10,10 @@ export interface Product {
   desc?: string;
   sizes?: string[];
   unavail?: string[];
+  stock?: Record<string, number>; // size → quantity; 0 = unavailable
   galleryLabels?: string[];
+  imageUrl?: string; // external photo URL (admin-set)
+  gender?: 'meninas' | 'meninos' | 'unissex';
 }
 
 export interface Collection {
@@ -132,4 +135,24 @@ export function getProductById(id: string) {
     if (p) return p;
   }
   return HOME_PRODUCTS[0];
+}
+
+export function getCatalog(): Product[] {
+  if (typeof window === 'undefined') return HOME_PRODUCTS;
+  try {
+    const saved = localStorage.getItem('pdl_admin_catalog');
+    return saved ? JSON.parse(saved) : HOME_PRODUCTS;
+  } catch {
+    return HOME_PRODUCTS;
+  }
+}
+
+export function getCollections(): Record<string, Collection> {
+  if (typeof window === 'undefined') return COLLECTIONS;
+  try {
+    const saved = localStorage.getItem('pdl_admin_collections');
+    return saved ? JSON.parse(saved) : COLLECTIONS;
+  } catch {
+    return COLLECTIONS;
+  }
 }
