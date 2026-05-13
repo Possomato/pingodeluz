@@ -16,11 +16,17 @@ export default function PdlHeader({ scrolled, onMenu }: PdlHeaderProps) {
 
   return (
     <div className={`pdl-header ${scrolled ? 'solid' : ''}`}>
-      <button className="pdl-header-icon" onClick={onMenu} aria-label="Menu">
+      <button className="pdl-header-icon pdl-header-menu" onClick={onMenu} aria-label="Menu">
         <IconMenu />
       </button>
       <Logo onClick={() => router.push('/')} />
-      <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+      <nav className="pdl-header-nav">
+        <a href="/genero/meninas">Meninas</a>
+        <a href="/genero/meninos">Meninos</a>
+        <a href="/colecao/jardim">Jardim Encantado</a>
+        <a href="/colecao/doce">Doce Aventura</a>
+      </nav>
+      <div className="pdl-header-icons" style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
         <button className="pdl-header-icon" onClick={() => router.push('/perfil')} aria-label="Perfil">
           <IconUser />
         </button>
