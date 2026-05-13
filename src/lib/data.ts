@@ -126,11 +126,11 @@ export function formatPrice(n: number): string {
 }
 
 export function getProductById(id: string) {
-  // Check HOME_PRODUCTS first
-  const hp = HOME_PRODUCTS.find(p => p.id === id);
+  const catalog = getCatalog();
+  const hp = catalog.find(p => p.id === id);
   if (hp) return hp;
-  // Then check all collections
-  for (const col of Object.values(COLLECTIONS)) {
+  const cols = getCollections();
+  for (const col of Object.values(cols)) {
     const p = col.products.find(p => p.id === id);
     if (p) return p;
   }
