@@ -204,6 +204,7 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
 .pdl-size.unavail { color: var(--muted-2); text-decoration: line-through; cursor: not-allowed; }
 .pdl-prodpage-cta { position: sticky; bottom: 0; margin-top: 32px; padding: 16px 20px 26px; background: linear-gradient(180deg, rgba(245,239,227,0) 0%, var(--cream) 30%); }
 .pdl-prodpage-cta button { width: 100%; padding: 16px; background: var(--ink); color: var(--cream-warm); border-radius: 999px; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.pdl-prodpage-cta-desktop { display: none; }
 .pdl-acc { border-top: 1px solid var(--border-soft); padding: 16px 0; }
 .pdl-acc:last-child { border-bottom: 1px solid var(--border-soft); }
 .pdl-acc-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--editorial); font-size: 16px; cursor: pointer; }
@@ -555,4 +556,13 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
   /* Product grid 3-column on desktop listing pages */
   .pdl-coll-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
   .pdl-coll-grid .pdl-prod { flex: none; width: auto; }
+
+  /* Product detail — two-column */
+  .pdl-prodpage-cols { display: grid; grid-template-columns: 55% 45%; gap: 48px; align-items: start; margin-top: 24px; }
+  .pdl-prodpage-right { position: sticky; top: 80px; }
+  .pdl-prodpage-gallery { height: 480px; border-radius: 4px; }
+
+  /* Hide sticky mobile CTA on desktop — button is inline in right panel */
+  .pdl-prodpage-cta-desktop { display: block; }
+  .pdl-prodpage-cta { display: none; }
 }
