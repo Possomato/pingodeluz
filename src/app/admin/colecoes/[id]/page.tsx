@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useAdmin } from '@/context/AdminContext';
@@ -26,6 +26,7 @@ export default function EditColecaoPage() {
     imageUrl: col?.imageUrl ?? '',
   });
   const [toast, setToast] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   if (!col) return (
     <AdminLayout>
@@ -33,7 +34,7 @@ export default function EditColecaoPage() {
     </AdminLayout>
   );
 
-  const set = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
+  const set = (key: keyof typeof form, val: string) => setForm(f => ({ ...f, [key]: val }));
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,7 +46,8 @@ export default function EditColecaoPage() {
       imageUrl: form.imageUrl || undefined,
     });
     setToast(true);
-    setTimeout(() => { setToast(false); router.push('/admin/colecoes'); }, 1500);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => { setToast(false); router.push('/admin/colecoes'); }, 1500);
   };
 
   return (
