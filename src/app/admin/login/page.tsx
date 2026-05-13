@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAdmin } from '@/context/AdminContext';
 
@@ -12,10 +12,11 @@ export default function AdminLoginPage() {
   const [shake, setShake] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  if (isAuthenticated) {
-    router.replace('/admin/produtos');
-    return null;
-  }
+  useEffect(() => {
+    if (isAuthenticated) router.replace('/admin/produtos');
+  }, [isAuthenticated, router]);
+
+  if (isAuthenticated) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
