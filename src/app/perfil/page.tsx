@@ -1,19 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import PdlImg from '@/components/PdlImg';
 import { IconChevronLeft, IconBag, IconGoogle, IconArrowRight } from '@/components/Icons';
 import { useCart } from '@/context/CartContext';
-import { useUser, MOCK_USER } from '@/context/UserContext';
-import { MOCK_ORDERS, MOCK_ADDRESSES } from '@/lib/data';
+import { createBrowserClient } from '@supabase/ssr';
+import type { User } from '@supabase/supabase-js';
 
-export default function PerfilPage() {
+function PerfilContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { cartCount } = useCart();
-  const { user, login, logout } = useUser();
+  const [user, setUser] = useState<User | null>(null);
   const [scrolled, setScrolled] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [signingIn, setSigningIn] = useState(false);
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 60);
@@ -21,13 +28,44 @@ export default function PerfilPage() {
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
-  const handleGoogle = () => {
-    setLoading(true);
-    setTimeout(() => {
-      login(MOCK_USER);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user ?? null);
       setLoading(false);
-    }, 1100);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleGoogle = async () => {
+    setSigningIn(true);
+    const redirect = searchParams.get('redirect') ?? '/perfil';
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=${redirect}`,
+      },
+    });
+    // Page will redirect; no need to setSigningIn(false)
   };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+  };
+
+  if (loading) {
+    return null;
+  }
+
+  const userName = user?.user_metadata?.full_name ?? user?.email ?? 'Cliente';
+  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+  const userInitial = userName.charAt(0).toUpperCase();
 
   if (!user) {
     return (
@@ -52,8 +90,8 @@ export default function PerfilPage() {
             Entre para ver seus pedidos, salvar endereços e acompanhar as peças favoritas.
           </div>
 
-          <button className="pdl-google-btn" onClick={handleGoogle} disabled={loading}>
-            {loading ? (
+          <button className="pdl-google-btn" onClick={handleGoogle} disabled={signingIn}>
+            {signingIn ? (
               <>
                 <svg width="16" height="16" viewBox="0 0 24 24" style={{ animation: 'pdl-spin 0.8s linear infinite' }}>
                   <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" fill="none" strokeDasharray="44" strokeDashoffset="22" />
@@ -89,49 +127,35 @@ export default function PerfilPage() {
 
       <div className="pdl-profile">
         <div className="pdl-profile-hero">
-          <div className="pdl-profile-avatar">{user.initial}</div>
+          <div className="pdl-profile-avatar">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt={userName} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+            ) : (
+              userInitial
+            )}
+          </div>
           <div className="pdl-profile-info">
             <div className="greeting">olá, mãe</div>
-            <div className="name">{user.name}</div>
+            <div className="name">{userName}</div>
             <div className="email">{user.email}</div>
           </div>
         </div>
 
         <div className="pdl-profile-stats">
-          <div className="pdl-stat"><div className="v">{MOCK_ORDERS.length}</div><div className="l">pedidos</div></div>
-          <div className="pdl-stat"><div className="v">7</div><div className="l">favoritos</div></div>
-          <div className="pdl-stat"><div className="v">{MOCK_ADDRESSES.length}</div><div className="l">endereços</div></div>
+          <div className="pdl-stat"><div className="v">0</div><div className="l">pedidos</div></div>
+          <div className="pdl-stat"><div className="v">0</div><div className="l">favoritos</div></div>
+          <div className="pdl-stat"><div className="v">0</div><div className="l">endereços</div></div>
         </div>
 
         <div className="pdl-profile-section">
           <h3><span>Meus <em>endereços</em></span><span className="action">+ novo</span></h3>
-          {MOCK_ADDRESSES.map(a => (
-            <div key={a.id} className={`pdl-address-card ${a.primary ? 'primary' : ''}`}>
-              <div className="head">
-                <span className="label">{a.label}</span>
-                {a.primary && <span className="badge">principal</span>}
-              </div>
-              <div className="body">{a.line1}<br />{a.line2}<br />CEP {a.cep}</div>
-            </div>
-          ))}
-          <div className="pdl-address-add">+ adicionar novo endereço</div>
+          <div className="pdl-address-add">Nenhum endereço salvo ainda.</div>
         </div>
 
         <div className="pdl-profile-section">
           <h3><span>Meus <em>pedidos</em></span><span className="action">ver todos</span></h3>
-          {MOCK_ORDERS.map(o => (
-            <div key={o.num} className="pdl-order-card">
-              <div>
-                <div className="top">
-                  <span className="num">{o.num}</span>
-                  <span className={`status ${o.statusKind}`}>{o.status}</span>
-                </div>
-                <div className="desc">{o.desc}</div>
-                <div className="meta">{o.items} {o.items === 1 ? 'peça' : 'peças'} · {o.date}</div>
-              </div>
-              <div className="total">{o.total}<IconArrowRight size={11} /></div>
-            </div>
-          ))}
+          <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>Seus pedidos aparecerão aqui.</div>
         </div>
 
         <div className="pdl-profile-section">
@@ -158,12 +182,20 @@ export default function PerfilPage() {
           <div className="pdl-profile-row"><span className="lbl">Guia de tamanhos</span><span className="meta"><IconArrowRight size={11} /></span></div>
         </div>
 
-        <div className="pdl-logout" onClick={() => { logout(); router.push('/'); }}>sair da conta</div>
+        <div className="pdl-logout" onClick={handleLogout}>sair da conta</div>
 
         <div style={{ marginTop: 24, padding: '14px 22px 24px', fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 12, color: 'var(--muted)', textAlign: 'center' }}>
-          Conta vinculada ao Google · {user.since}
+          Conta vinculada ao Google
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PerfilPage() {
+  return (
+    <Suspense>
+      <PerfilContent />
+    </Suspense>
   );
 }
