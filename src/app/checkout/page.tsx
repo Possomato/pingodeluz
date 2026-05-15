@@ -18,6 +18,7 @@ export default function CheckoutPage() {
     complement: 'apto 42', neighborhood: 'Jardim Paulistano',
     city: 'São Paulo', state: 'SP',
   });
+  const [placing, setPlacing] = useState(false);
   const [payment, setPayment] = useState('pix');
   const [card, setCard] = useState({ number: '', name: '', expiry: '', cvv: '', installments: '3x' });
 
@@ -33,17 +34,37 @@ export default function CheckoutPage() {
     return () => window.removeEventListener('scroll', handler);
   }, []);
 
-  const placeOrder = () => {
-    const orderNumber = 'PDL-' + String(Math.floor(Math.random() * 90000) + 10000);
-    const params = new URLSearchParams({
-      num: orderNumber,
-      total: String(finalTotal),
-      payment,
-      email: shipping.email,
-      name: shipping.name,
-    });
-    setTimeout(() => clearCart(), 100);
-    router.push(`/confirmacao?${params.toString()}`);
+  const placeOrder = async () => {
+    setPlacing(true);
+    try {
+      const { createOrderAction } = await import('@/app/actions/checkout');
+      const { initPoint } = await createOrderAction(
+        cart.map(i => ({
+          id: i.id,
+          name: i.name,
+          price: i.price,
+          qty: i.qty ?? 1,
+          size: i.size,
+          tint: i.tint ?? '',
+          col: i.col ?? '',
+        })),
+        {
+          name: shipping.name ?? '',
+          email: shipping.email ?? '',
+          zip: shipping.cep ?? '',
+          street: shipping.address ?? '',
+          complement: shipping.complement ?? '',
+          neighborhood: shipping.neighborhood ?? '',
+          city: shipping.city ?? '',
+          state: shipping.state ?? '',
+        }
+      );
+      clearCart();
+      window.location.href = initPoint;
+    } catch (err) {
+      console.error('Checkout error:', err);
+      setPlacing(false);
+    }
   };
 
   return (
@@ -182,8 +203,8 @@ export default function CheckoutPage() {
 
       {step === 3 && (
         <div className="pdl-cart-cta">
-          <button onClick={placeOrder}>
-            finalizar pedido · {formatPrice(finalTotal)} <IconArrowRight size={12} />
+          <button onClick={placeOrder} disabled={placing}>
+            {placing ? 'processando...' : <>finalizar pedido · {formatPrice(finalTotal)} <IconArrowRight size={12} /></>}
           </button>
           <div className="pdl-cart-secure">
             <IconLock size={12} />
