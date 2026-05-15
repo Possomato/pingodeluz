@@ -6,6 +6,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { useAdmin } from '@/context/AdminContext';
 import PdlImg from '@/components/PdlImg';
 import { Product } from '@/lib/data';
+import { uploadImageAction } from '@/app/actions/upload';
 
 const SIZES = ['1', '2', '3', '4', '6', '8'];
 const TINTS = ['rose', 'ochre', 'sage', 'clay', 'moss', 'ink'];
@@ -97,14 +98,43 @@ export function ProductForm({ initial, onSave }: {
       </div>
 
       <div className="adm-field">
-        <label>URL da foto</label>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <input value={form.imageUrl ?? ''} onChange={e => set('imageUrl', e.target.value)} placeholder="https://…" style={{ flex: 1 }} />
-          {form.imageUrl
-            ? <img src={form.imageUrl} alt="" width={80} height={107} className="adm-img-preview" onError={e => (e.currentTarget.style.display = 'none')} />
-            : <PdlImg tint={form.tint ?? 'rose'} style={{ width: 80, height: 107, flexShrink: 0, borderRadius: 6 }} />
-          }
-        </div>
+        <label>Imagem do produto</label>
+        {form.imageUrl && (
+          <img
+            src={form.imageUrl}
+            alt="preview"
+            width={120}
+            height={160}
+            style={{ objectFit: 'cover', borderRadius: 4, marginBottom: 8, display: 'block' }}
+          />
+        )}
+        {!form.imageUrl && (
+          <PdlImg tint={form.tint ?? 'rose'} style={{ width: 120, height: 160, flexShrink: 0, borderRadius: 4, marginBottom: 8, display: 'block' }} />
+        )}
+        <input
+          type="file"
+          accept="image/*"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const fd = new FormData();
+            fd.append('file', file);
+            const url = await uploadImageAction(fd);
+            set('imageUrl', url);
+          }}
+        />
+        <input
+          type="url"
+          placeholder="ou cole uma URL"
+          value={form.imageUrl ?? ''}
+          onChange={e => set('imageUrl', e.target.value)}
+          style={{ marginTop: 6 }}
+        />
+        {form.imageUrl && (
+          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4, wordBreak: 'break-all' }}>
+            {form.imageUrl}
+          </div>
+        )}
       </div>
 
       <div className="adm-field">
