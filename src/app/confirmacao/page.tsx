@@ -1,19 +1,69 @@
 'use client';
 
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Sparkle } from '@/components/Icons';
-import { formatPrice } from '@/lib/data';
-import { Suspense } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
+
+interface Order {
+  id: string;
+  total: number;
+  status: string;
+  mp_payment_method: string | null;
+  created_at: string;
+  items: Array<{ name: string; price: string; qty: number; size: string }>;
+  address: Record<string, string>;
+}
+
+function formatPrice(n: number): string {
+  return 'R$ ' + n.toFixed(2).replace('.', ',');
+}
 
 function ConfirmacaoContent() {
   const router = useRouter();
-  const params = useSearchParams();
+  const searchParams = useSearchParams();
+  const orderId = searchParams.get('order_id');
+  const isPending = searchParams.get('pending') === 'true';
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const orderNumber = params.get('num') || 'PDL-00000';
-  const total = Number(params.get('total') || 0);
-  const payment = params.get('payment') || 'pix';
-  const email = params.get('email') || '';
-  const name = params.get('name') || '';
+  useEffect(() => {
+    if (!orderId) { router.replace('/'); return; }
+
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderId)
+      .single()
+      .then(({ data }) => {
+        setOrder(data);
+        setLoading(false);
+      });
+  }, [orderId]);
+
+  if (loading) return <div className="pdl-app" style={{ minHeight: '60vh' }} />;
+  if (!order) return (
+    <div className="pdl-app">
+      <div style={{ padding: 40, fontFamily: 'var(--editorial)', fontStyle: 'italic', color: 'var(--muted)' }}>
+        Pedido não encontrado.
+      </div>
+    </div>
+  );
+
+  const paymentLabel =
+    order.mp_payment_method?.includes('pix') ? 'Pix' :
+    order.mp_payment_method?.includes('credit') ? 'Cartão de crédito' :
+    order.mp_payment_method?.includes('debit') ? 'Cartão de débito' :
+    order.mp_payment_method ?? (isPending ? 'Aguardando confirmação' : 'Confirmado');
+
+  const customerName = order.address?.name?.split(' ')[0] ?? 'cliente';
+  const email = order.address?.email ?? '';
+  const orderNumber = order.id.slice(0, 8).toUpperCase();
 
   return (
     <div className="pdl-app">
@@ -24,19 +74,15 @@ function ConfirmacaoContent() {
         <h2>Pedido <em>confirmado!</em></h2>
         <div className="num">nº {orderNumber}</div>
         <p>
-          Obrigada, {name.split(' ')[0]}. Estamos preparando cada peça com carinho — você vai receber um e-mail em{' '}
+          Obrigada, {customerName}. Estamos preparando cada peça com carinho — você vai receber um e-mail em{' '}
           <strong style={{ color: 'var(--ink)', fontStyle: 'normal' }}>{email}</strong> assim que sair do nosso ateliê.
         </p>
 
         <div className="pdl-confirm-summary">
           <div className="lbl">total</div>
-          <div className="val" style={{ fontSize: 22, fontWeight: 500, fontFamily: 'var(--serif)' }}>{formatPrice(total)}</div>
+          <div className="val" style={{ fontSize: 22, fontWeight: 500, fontFamily: 'var(--serif)' }}>{formatPrice(order.total)}</div>
           <div className="lbl">pagamento</div>
-          <div className="val">
-            {payment === 'pix' && 'Pix · QR Code enviado por e-mail'}
-            {payment === 'card' && 'Cartão de crédito · em 3x sem juros'}
-            {payment === 'boleto' && 'Boleto · enviado por e-mail'}
-          </div>
+          <div className="val">{paymentLabel}</div>
           <div className="lbl">previsão de entrega</div>
           <div className="val">5 a 8 dias úteis</div>
           <div className="lbl">acompanhe</div>
