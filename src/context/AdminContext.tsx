@@ -1,12 +1,11 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Product, Collection, HOME_PRODUCTS, COLLECTIONS } from '@/lib/data';
+import { Product, Collection, HOME_PRODUCTS, COLLECTIONS, fetchCatalog, fetchCollections } from '@/lib/data';
+import { upsertProductAction, deleteProductAction, upsertCollectionAction } from '@/app/actions/admin';
 
 const ADMIN_PASSWORD = 'pingo2024';
 const AUTH_KEY = 'pdl_admin_auth';
-const CATALOG_KEY = 'pdl_admin_catalog';
-const COLLECTIONS_KEY = 'pdl_admin_collections';
 
 interface AdminContextType {
   isAuthenticated: boolean;
@@ -14,10 +13,10 @@ interface AdminContextType {
   logout: () => void;
   products: Product[];
   collections: Record<string, Collection>;
-  addProduct: (p: Omit<Product, 'id'>) => void;
-  updateProduct: (id: string, p: Partial<Product>) => void;
-  deleteProduct: (id: string) => void;
-  updateCollection: (id: string, c: Partial<Collection>) => void;
+  addProduct: (p: Omit<Product, 'id'>) => Promise<void>;
+  updateProduct: (id: string, p: Partial<Product>) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
+  updateCollection: (id: string, c: Partial<Collection>) => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType | null>(null);
@@ -29,18 +28,14 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setIsAuthenticated(localStorage.getItem(AUTH_KEY) === 'true');
-    try {
-      const cat = localStorage.getItem(CATALOG_KEY);
-      if (cat) setProducts(JSON.parse(cat));
-      const cols = localStorage.getItem(COLLECTIONS_KEY);
-      if (cols) setCollections(JSON.parse(cols));
-    } catch { /* use defaults */ }
+    // Load live data from Supabase
+    fetchCatalog().then(data => {
+      if (data.length > 0) setProducts(data);
+    }).catch(() => { /* keep defaults */ });
+    fetchCollections().then(data => {
+      if (Object.keys(data).length > 0) setCollections(data);
+    }).catch(() => { /* keep defaults */ });
   }, []);
-
-  const persist = (next: Product[], nextCols: Record<string, Collection>) => {
-    localStorage.setItem(CATALOG_KEY, JSON.stringify(next));
-    localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(nextCols));
-  };
 
   const login = (password: string) => {
     if (password !== ADMIN_PASSWORD) return false;
@@ -54,29 +49,32 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(false);
   };
 
-  const addProduct = (p: Omit<Product, 'id'>) => {
+  const addProduct = async (p: Omit<Product, 'id'>) => {
     const id = 'adm-' + Date.now();
-    const next = [...products, { ...p, id }];
-    setProducts(next);
-    persist(next, collections);
+    const newProduct: Product = { ...p, id };
+    setProducts(prev => [...prev, newProduct]); // optimistic
+    await upsertProductAction(newProduct).catch(console.error); // persist
   };
 
-  const updateProduct = (id: string, patch: Partial<Product>) => {
-    const next = products.map(p => p.id === id ? { ...p, ...patch } : p);
-    setProducts(next);
-    persist(next, collections);
+  const updateProduct = async (id: string, patch: Partial<Product>) => {
+    const existing = products.find(p => p.id === id);
+    if (!existing) return;
+    const updated: Product = { ...existing, ...patch };
+    setProducts(prev => prev.map(p => p.id === id ? updated : p)); // optimistic
+    await upsertProductAction(updated).catch(console.error); // persist
   };
 
-  const deleteProduct = (id: string) => {
-    const next = products.filter(p => p.id !== id);
-    setProducts(next);
-    persist(next, collections);
+  const deleteProduct = async (id: string) => {
+    setProducts(prev => prev.filter(p => p.id !== id)); // optimistic
+    await deleteProductAction(id).catch(console.error); // persist
   };
 
-  const updateCollection = (id: string, patch: Partial<Collection>) => {
-    const next = { ...collections, [id]: { ...collections[id], ...patch } };
-    setCollections(next);
-    persist(products, next);
+  const updateCollection = async (id: string, patch: Partial<Collection>) => {
+    const existing = collections[id];
+    if (!existing) return;
+    const updated: Collection = { ...existing, ...patch };
+    setCollections(prev => ({ ...prev, [id]: updated })); // optimistic
+    await upsertCollectionAction(updated).catch(console.error); // persist
   };
 
   return (
