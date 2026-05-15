@@ -157,3 +157,109 @@ export function getCollections(): Record<string, Collection> {
     return COLLECTIONS;
   }
 }
+
+// ─── Supabase async fetchers ────────────────────────────────
+
+function rowToProduct(row: Record<string, unknown>): Product {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    nameParts: (row.name_parts as [string, string]) ?? [row.name as string, ''],
+    col: row.col as string,
+    price: row.price as string,
+    tint: row.tint as string,
+    label: row.label as string,
+    installments: row.installments as string | undefined,
+    desc: row.description as string | undefined,
+    sizes: row.sizes as string[] | undefined,
+    unavail: row.unavail as string[] | undefined,
+    stock: row.stock as Record<string, number> | undefined,
+    galleryLabels: row.gallery_labels as string[] | undefined,
+    imageUrl: row.image_url as string | undefined,
+    gender: row.gender as 'meninas' | 'meninos' | 'unissex' | undefined,
+  };
+}
+
+export async function fetchCatalog(): Promise<Product[]> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/products?select=*`,
+      {
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+        },
+        next: { revalidate: 60 },
+      }
+    );
+    if (!res.ok) return HOME_PRODUCTS;
+    const rows = await res.json();
+    return rows.map(rowToProduct);
+  } catch {
+    return HOME_PRODUCTS;
+  }
+}
+
+export async function fetchCollections(): Promise<Record<string, Collection>> {
+  try {
+    const [colRes, prodRes] = await Promise.all([
+      fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/collections?select=*`, {
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+        },
+        next: { revalidate: 60 },
+      }),
+      fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/products?select=*`, {
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+        },
+        next: { revalidate: 60 },
+      }),
+    ]);
+    if (!colRes.ok || !prodRes.ok) return COLLECTIONS;
+    const colRows: Record<string, unknown>[] = await colRes.json();
+    const prodRows: Record<string, unknown>[] = await prodRes.json();
+    const products = prodRows.map(rowToProduct);
+    const result: Record<string, Collection> = {};
+    for (const row of colRows) {
+      const id = row.id as string;
+      const colProducts = products.filter(p => p.col === (row.name as string[]).join(' '));
+      result[id] = {
+        id,
+        name: row.name as [string, string],
+        eyebrow: row.eyebrow as string,
+        tint: row.tint as string,
+        intro: row.intro as string,
+        count: (row.count as number) ?? colProducts.length,
+        products: colProducts,
+        imageUrl: row.image_url as string | undefined,
+      };
+    }
+    return result;
+  } catch {
+    return COLLECTIONS;
+  }
+}
+
+export async function fetchProductById(id: string): Promise<Product> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}&select=*`,
+      {
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+        },
+        next: { revalidate: 60 },
+      }
+    );
+    if (!res.ok) return getProductById(id);
+    const rows = await res.json();
+    if (!rows.length) return getProductById(id);
+    return rowToProduct(rows[0]);
+  } catch {
+    return getProductById(id);
+  }
+}
