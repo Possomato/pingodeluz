@@ -7,6 +7,7 @@ import { IconChevronLeft, IconBag, IconGoogle, IconArrowRight } from '@/componen
 import { useCart } from '@/context/CartContext';
 import { createBrowserClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
+import { getAddressesAction, saveAddressAction, deleteAddressAction, type Address } from '@/app/actions/addresses';
 
 function PerfilContent() {
   const router = useRouter();
@@ -16,6 +17,9 @@ function PerfilContent() {
   const [scrolled, setScrolled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
+  const [addresses, setAddresses] = useState<Address[]>([]);
+  const [showAddrForm, setShowAddrForm] = useState(false);
+  const [newAddr, setNewAddr] = useState({ label: 'Casa', zip: '', street: '', complement: '', neighborhood: '', city: '', state: '' });
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,6 +45,11 @@ function PerfilContent() {
     return () => subscription.unsubscribe();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    getAddressesAction().then(setAddresses);
+  }, [user]);
 
   const handleGoogle = async () => {
     setSigningIn(true);
@@ -149,8 +158,65 @@ function PerfilContent() {
         </div>
 
         <div className="pdl-profile-section">
-          <h3><span>Meus <em>endereços</em></span><span className="action">+ novo</span></h3>
-          <div className="pdl-address-add">Nenhum endereço salvo ainda.</div>
+          <h3><span>Meus <em>endereços</em></span></h3>
+          {addresses.map(a => (
+            <div key={a.id} style={{ marginBottom: 12, padding: '12px 14px', background: 'var(--cream-warm)', borderRadius: 6 }}>
+              <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.05 }}>{a.label}</div>
+              <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 }}>
+                {a.street}{a.complement ? `, ${a.complement}` : ''}<br />
+                {a.neighborhood} · {a.city}/{a.state} · {a.zip}
+              </div>
+              <button
+                onClick={async () => {
+                  await deleteAddressAction(a.id);
+                  setAddresses(prev => prev.filter(x => x.id !== a.id));
+                }}
+                style={{ marginTop: 6, fontSize: 11, color: 'var(--terra)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>
+                remover
+              </button>
+            </div>
+          ))}
+
+          {!showAddrForm && (
+            <button
+              onClick={() => setShowAddrForm(true)}
+              style={{ marginTop: 8, fontSize: 13, fontFamily: 'var(--editorial)', fontStyle: 'italic', color: 'var(--terra)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>
+              + adicionar endereço
+            </button>
+          )}
+
+          {showAddrForm && (
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {(['label', 'zip', 'street', 'complement', 'neighborhood', 'city', 'state'] as const).map(field => (
+                <div key={field}>
+                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>{field}</div>
+                  <input
+                    value={newAddr[field]}
+                    onChange={e => setNewAddr(prev => ({ ...prev, [field]: e.target.value }))}
+                    style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                  />
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                <button
+                  onClick={async () => {
+                    await saveAddressAction(newAddr);
+                    const updated = await getAddressesAction();
+                    setAddresses(updated);
+                    setShowAddrForm(false);
+                    setNewAddr({ label: 'Casa', zip: '', street: '', complement: '', neighborhood: '', city: '', state: '' });
+                  }}
+                  style={{ padding: '10px 16px', background: 'var(--ink)', color: 'var(--cream-warm)', borderRadius: 999, fontSize: 12, fontWeight: 600, fontFamily: 'var(--sans)', border: 'none', cursor: 'pointer' }}>
+                  salvar endereço
+                </button>
+                <button
+                  onClick={() => setShowAddrForm(false)}
+                  style={{ padding: '10px 16px', background: 'none', color: 'var(--muted)', borderRadius: 999, fontSize: 12, border: '1px solid var(--border)', cursor: 'pointer' }}>
+                  cancelar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="pdl-profile-section">
