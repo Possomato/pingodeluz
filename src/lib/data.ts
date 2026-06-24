@@ -122,7 +122,7 @@ export type HomepageSectionId = typeof HOMEPAGE_SECTION_IDS[number];
 export const DEFAULT_HOMEPAGE_CONFIG: Record<HomepageSectionId, HomepageSection> =
   Object.fromEntries(
     HOMEPAGE_SECTION_IDS.map(id => [id, { id, visible: true, imageUrls: [] }])
-  ) as Record<HomepageSectionId, HomepageSection>;
+  ) as unknown as Record<HomepageSectionId, HomepageSection>;
 
 export const MOCK_ORDERS = [
   { num: 'PDL-23491', date: 'maio · 2026', status: 'em trânsito', statusKind: 'transit', desc: 'Vestido Margarida + Conjunto Pétala', items: 2, total: 'R$ 408' },

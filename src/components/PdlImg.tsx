@@ -7,15 +7,20 @@ interface PdlImgProps {
   style?: React.CSSProperties;
   className?: string;
   children?: React.ReactNode;
+  imageUrl?: string;
 }
 
-export default function PdlImg({ tint, label, ratio, style = {}, className = '', children }: PdlImgProps) {
+export default function PdlImg({ tint, label, ratio, style = {}, className = '', children, imageUrl }: PdlImgProps) {
   return (
     <div
       className={`pdl-img ${tint ? 'tint-' + tint : ''} ${className}`}
-      style={{ aspectRatio: ratio, ...style }}
+      style={{
+        aspectRatio: ratio,
+        ...(imageUrl ? { backgroundImage: `url(${imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
+        ...style,
+      }}
     >
-      {label && <span className="pdl-img-label">{label}</span>}
+      {label && !imageUrl && <span className="pdl-img-label">{label}</span>}
       {children}
     </div>
   );
