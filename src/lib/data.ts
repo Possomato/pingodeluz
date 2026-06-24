@@ -106,6 +106,24 @@ export const TESTIMONIALS = [
   { q: 'O cuidado com o acabamento se nota. As peças sobrevivem a três crianças sem perder a graça.', name: 'Luiza Caetano', role: 'mãe da Aurora, Liz e Cora' },
 ];
 
+export interface HomepageSection {
+  id: string;
+  visible: boolean;
+  imageUrls: string[];
+}
+
+export const HOMEPAGE_SECTION_IDS = [
+  'meninas', 'meninos', 'queridos', 'manifesto',
+  'colecoes', 'fases', 'depoimentos', 'instagram',
+] as const;
+
+export type HomepageSectionId = typeof HOMEPAGE_SECTION_IDS[number];
+
+export const DEFAULT_HOMEPAGE_CONFIG: Record<HomepageSectionId, HomepageSection> =
+  Object.fromEntries(
+    HOMEPAGE_SECTION_IDS.map(id => [id, { id, visible: true, imageUrls: [] }])
+  ) as Record<HomepageSectionId, HomepageSection>;
+
 export const MOCK_ORDERS = [
   { num: 'PDL-23491', date: 'maio · 2026', status: 'em trânsito', statusKind: 'transit', desc: 'Vestido Margarida + Conjunto Pétala', items: 2, total: 'R$ 408' },
   { num: 'PDL-21204', date: 'março · 2026', status: 'entregue', statusKind: 'entregue', desc: 'Macacão Explorador', items: 1, total: 'R$ 159' },
@@ -261,5 +279,35 @@ export async function fetchProductById(id: string): Promise<Product> {
     return rowToProduct(rows[0]);
   } catch {
     return getProductById(id);
+  }
+}
+
+export async function fetchHomepageConfig(): Promise<Record<HomepageSectionId, HomepageSection>> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/homepage_config?select=*`,
+      {
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+        },
+        next: { revalidate: 60 },
+      }
+    );
+    if (!res.ok) return DEFAULT_HOMEPAGE_CONFIG;
+    const rows: { id: string; visible: boolean; image_urls: string[] }[] = await res.json();
+    const result = { ...DEFAULT_HOMEPAGE_CONFIG };
+    for (const row of rows) {
+      if (row.id in result) {
+        result[row.id as HomepageSectionId] = {
+          id: row.id,
+          visible: row.visible,
+          imageUrls: row.image_urls ?? [],
+        };
+      }
+    }
+    return result;
+  } catch {
+    return DEFAULT_HOMEPAGE_CONFIG;
   }
 }
