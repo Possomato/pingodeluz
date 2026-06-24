@@ -75,6 +75,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const updateHomepageSection = async (id: HomepageSectionId, patch: Partial<HomepageSection>) => {
     const existing = homepageConfig[id];
+    if (!existing) return;
     const updated: HomepageSection = { ...existing, ...patch };
     setHomepageConfig(prev => ({ ...prev, [id]: updated }));
     await upsertHomepageSectionAction(updated).catch(console.error);

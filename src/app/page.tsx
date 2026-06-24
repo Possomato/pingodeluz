@@ -23,7 +23,6 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    fetchCatalog().catch(() => {});
     fetchHomepageConfig().then(cfg => setHpConfig(cfg)).catch(() => {});
   }, []);
 

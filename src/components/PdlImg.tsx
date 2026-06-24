@@ -16,7 +16,7 @@ export default function PdlImg({ tint, label, ratio, style = {}, className = '',
       className={`pdl-img ${tint ? 'tint-' + tint : ''} ${className}`}
       style={{
         aspectRatio: ratio,
-        ...(imageUrl ? { backgroundImage: `url(${imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
+        ...(imageUrl ? { backgroundImage: `url("${imageUrl.replace(/"/g, '%22')}")`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
         ...style,
       }}
     >

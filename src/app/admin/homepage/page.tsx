@@ -31,13 +31,13 @@ export default function AdminHomepagePage() {
   const handleUpload = async (id: HomepageSectionId, files: FileList | null) => {
     if (!files || files.length === 0) return;
     const section = homepageConfig[id];
-    const uploaded: string[] = [];
-    for (const file of Array.from(files)) {
-      const fd = new FormData();
-      fd.append('file', file);
-      const url = await uploadImageAction(fd);
-      uploaded.push(url);
-    }
+    const uploaded = await Promise.all(
+      Array.from(files).map(async file => {
+        const fd = new FormData();
+        fd.append('file', file);
+        return uploadImageAction(fd);
+      })
+    );
     const newUrls = id === 'instagram'
       ? [...section.imageUrls, ...uploaded].slice(0, 6)
       : [uploaded[uploaded.length - 1]];
