@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PdlImg from '@/components/PdlImg';
+import PdlHeader from '@/components/PdlHeader';
+import PdlDrawer from '@/components/PdlDrawer';
 import { IconChevronLeft, IconBag, IconChevronDown, IconArrowRight } from '@/components/Icons';
 import type { Product } from '@/lib/data';
 import { HOME_PRODUCTS, TABELA_MEDIDAS, SIZES_MENINAS } from '@/lib/data';
@@ -11,7 +13,7 @@ import { useCart } from '@/context/CartContext';
 export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
   const router = useRouter();
   const { addToCart, cartCount } = useCart();
-  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [size, setSize] = useState<string | null>(null);
   const [galleryIdx, setGalleryIdx] = useState(0);
   const [openAcc, setOpenAcc] = useState<string | null>('compo');
@@ -21,17 +23,12 @@ export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
   const labels = p.galleryLabels || ['frente', 'costas', 'detalhe'];
   const nameParts = p.nameParts || [p.name, ''];
 
-  useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 60);
-    window.addEventListener('scroll', handler, { passive: true });
-    return () => window.removeEventListener('scroll', handler);
-  }, []);
-
   const toggle = (k: string) => setOpenAcc(openAcc === k ? null : k);
 
   return (
     <div className="pdl-app" style={{ paddingBottom: 0 }}>
-      <div className={`pdl-back-bar ${scrolled ? 'solid' : ''}`} style={{ marginBottom: -54 }}>
+      <PdlHeader onMenu={() => setMenuOpen(true)} />
+      <div className="pdl-back-bar solid">
         <button onClick={() => router.back()} aria-label="Voltar"><IconChevronLeft size={18} /></button>
         <span className="pdl-back-title">{p.name}</span>
         <button onClick={() => router.push('/carrinho')} aria-label="Sacola" style={{ position: 'relative' }}>
@@ -87,6 +84,20 @@ export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
                   );
                 })}
               </div>
+            </div>
+
+            <div className="pdl-prodpage-cta-desktop" style={{ marginTop: 16 }}>
+              <button
+                onClick={() => {
+                  if (!size) return;
+                  addToCart({ pid: id, id, name: p.name, col: p.col, price: p.price, tint: p.tint, size });
+                  router.push('/carrinho');
+                }}
+                style={size ? { width: '100%', padding: '14px 20px', background: 'var(--ink)', color: 'var(--cream-warm)', borderRadius: 999, fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 13, letterSpacing: '0.04em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 } : { width: '100%', padding: '14px 20px', background: 'var(--border)', color: 'var(--muted)', borderRadius: 999, fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 13 }}
+              >
+                {size ? `adicionar à sacola · tam ${size}` : 'escolha um tamanho'}
+                {size && <IconArrowRight size={12} />}
+              </button>
             </div>
 
             <div className="pdl-size-chart">
@@ -169,19 +180,6 @@ export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
             </div>
           </div>
 
-          <div className="pdl-prodpage-cta-desktop" style={{ marginTop: 24 }}>
-            <button
-              onClick={() => {
-                if (!size) return;
-                addToCart({ pid: id, id, name: p.name, col: p.col, price: p.price, tint: p.tint, size });
-                router.push('/carrinho');
-              }}
-              style={size ? { width: '100%', padding: '14px 20px', background: 'var(--ink)', color: 'var(--cream-warm)', borderRadius: 999, fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 13, letterSpacing: '0.04em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 } : { width: '100%', padding: '14px 20px', background: 'var(--border)', color: 'var(--muted)', borderRadius: 999, fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 13 }}
-            >
-              {size ? `adicionar à sacola · tam ${size}` : 'escolha um tamanho'}
-              {size && <IconArrowRight size={12} />}
-            </button>
-          </div>
         </div>
       </div>
 
@@ -200,6 +198,7 @@ export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
 
       <div style={{ height: 100 }} />
 
+      <PdlDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
       <div className="pdl-prodpage-cta">
         <button
           onClick={() => {
