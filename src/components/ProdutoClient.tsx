@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import PdlImg from '@/components/PdlImg';
 import { IconChevronLeft, IconBag, IconChevronDown, IconArrowRight } from '@/components/Icons';
 import type { Product } from '@/lib/data';
-import { HOME_PRODUCTS } from '@/lib/data';
+import { HOME_PRODUCTS, TABELA_MEDIDAS, SIZES_MENINAS } from '@/lib/data';
 import { useCart } from '@/context/CartContext';
 
 export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
@@ -16,7 +16,7 @@ export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
   const [galleryIdx, setGalleryIdx] = useState(0);
   const [openAcc, setOpenAcc] = useState<string | null>('compo');
 
-  const sizes = p.sizes || ['1', '2', '3', '4', '6', '8'];
+  const sizes = p.sizes || SIZES_MENINAS;
   const unavail = p.unavail || [];
   const labels = p.galleryLabels || ['frente', 'costas', 'detalhe'];
   const nameParts = p.nameParts || [p.name, ''];
@@ -72,12 +72,7 @@ export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
             {p.desc && <div className="pdl-prodpage-desc">{p.desc}</div>}
 
             <div className="pdl-prodpage-section">
-              <h4>
-                <span>tamanho</span>
-                <span style={{ textTransform: 'none', letterSpacing: 0.05, fontFamily: 'var(--editorial)', fontStyle: 'italic' }}>
-                  guia de tamanhos
-                </span>
-              </h4>
+              <h4><span>tamanho</span></h4>
               <div className="pdl-prodpage-sizes">
                 {sizes.map(s => {
                   const ua = unavail.includes(s);
@@ -92,6 +87,37 @@ export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
                   );
                 })}
               </div>
+            </div>
+
+            <div className="pdl-size-chart">
+              <div className="pdl-size-chart-note">toque no tamanho para ver suas medidas</div>
+              <div className="pdl-size-chart-scroll">
+                <table className="pdl-size-table">
+                  <thead>
+                    <tr>
+                      <th>tam.</th>
+                      <th>tórax</th>
+                      <th>cintura</th>
+                      <th>compr.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {TABELA_MEDIDAS.filter(row => sizes.includes(row.manequim)).map(row => (
+                      <tr
+                        key={row.manequim}
+                        className={`pdl-size-table-row ${size === row.manequim ? 'active' : ''}`}
+                        onClick={() => setSize(row.manequim)}
+                      >
+                        <td className="pdl-size-table-maneq">{row.manequim}</td>
+                        <td>{row.torax}</td>
+                        <td>{row.cintura}</td>
+                        <td>{row.comprimento}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="pdl-size-chart-caption">medidas em centímetros · corpo da criança</div>
             </div>
 
             <div className="pdl-prodpage-section">
