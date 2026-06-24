@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Product, Collection, HOME_PRODUCTS, COLLECTIONS, fetchCatalog, fetchCollections } from '@/lib/data';
-import { upsertProductAction, deleteProductAction, upsertCollectionAction } from '@/app/actions/admin';
+import { Product, Collection, HOME_PRODUCTS, COLLECTIONS, fetchCatalog, fetchCollections, HomepageSection, HomepageSectionId, DEFAULT_HOMEPAGE_CONFIG, fetchHomepageConfig } from '@/lib/data';
+import { upsertProductAction, deleteProductAction, upsertCollectionAction, upsertHomepageSectionAction } from '@/app/actions/admin';
 
 const ADMIN_PASSWORD = 'pingo2024';
 const AUTH_KEY = 'pdl_admin_auth';
@@ -17,6 +17,8 @@ interface AdminContextType {
   updateProduct: (id: string, p: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   updateCollection: (id: string, c: Partial<Collection>) => Promise<void>;
+  homepageConfig: Record<HomepageSectionId, HomepageSection>;
+  updateHomepageSection: (id: HomepageSectionId, patch: Partial<HomepageSection>) => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType | null>(null);
@@ -25,6 +27,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [products, setProducts] = useState<Product[]>(HOME_PRODUCTS);
   const [collections, setCollections] = useState<Record<string, Collection>>(COLLECTIONS);
+  const [homepageConfig, setHomepageConfig] = useState<Record<HomepageSectionId, HomepageSection>>(DEFAULT_HOMEPAGE_CONFIG);
 
   useEffect(() => {
     setIsAuthenticated(localStorage.getItem(AUTH_KEY) === 'true');
@@ -35,6 +38,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     fetchCollections().then(data => {
       if (Object.keys(data).length > 0) setCollections(data);
     }).catch(() => { /* keep defaults */ });
+    fetchHomepageConfig().then(data => setHomepageConfig(data)).catch(() => {});
   }, []);
 
   const login = (password: string) => {
@@ -69,6 +73,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     await deleteProductAction(id).catch(console.error); // persist
   };
 
+  const updateHomepageSection = async (id: HomepageSectionId, patch: Partial<HomepageSection>) => {
+    const existing = homepageConfig[id];
+    const updated: HomepageSection = { ...existing, ...patch };
+    setHomepageConfig(prev => ({ ...prev, [id]: updated }));
+    await upsertHomepageSectionAction(updated).catch(console.error);
+  };
+
   const updateCollection = async (id: string, patch: Partial<Collection>) => {
     const existing = collections[id];
     if (!existing) return;
@@ -78,7 +89,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AdminContext.Provider value={{ isAuthenticated, login, logout, products, collections, addProduct, updateProduct, deleteProduct, updateCollection }}>
+    <AdminContext.Provider value={{ isAuthenticated, login, logout, products, collections, addProduct, updateProduct, deleteProduct, updateCollection, homepageConfig, updateHomepageSection }}>
       {children}
     </AdminContext.Provider>
   );
