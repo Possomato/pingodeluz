@@ -37,11 +37,11 @@ export interface GenderData {
 }
 
 export const HOME_PRODUCTS: Product[] = [
-  { id: 'p1', name: 'Vestido Margarida', nameParts: ['Vestido', 'Margarida'], col: 'Jardim Encantado', price: 'R$ 189', tint: 'rose', label: 'foto · vestido florido em musselina', installments: 'em 3x de R$ 63 sem juros', desc: 'Vestido de musselina dupla com bordado de margaridas à mão na barra. Cintura solta, mangas bufantes e fita de seda nas costas.', sizes: ['1', '2', '3', '4', '6', '8'], unavail: ['8'], galleryLabels: ['frente', 'costas', 'bordado', 'detalhe da fita'] },
+  { id: 'p1', name: 'Vestido Margarida', nameParts: ['Vestido', 'Margarida'], col: 'Jardim Encantado', price: 'R$ 189', tint: 'rose', label: 'foto · vestido florido em musselina', installments: 'em 3x de R$ 63 sem juros', desc: 'Vestido de musselina dupla com bordado de margaridas à mão na barra. Cintura solta, mangas bufantes e fita de seda nas costas.', sizes: ['1m', '3m', '6m', '9m', '1', '2', '4', '6', '8', '10', '12', '14'], unavail: ['8'], galleryLabels: ['frente', 'costas', 'bordado', 'detalhe da fita'] },
   { id: 'p2', name: 'Macacão Explorador', nameParts: ['Macacão', 'Explorador'], col: 'Doce Aventura', price: 'R$ 159', tint: 'ochre', label: 'foto · macacão linho cru', installments: 'em 3x de R$ 53 sem juros', desc: 'Macacão de linho cru com bolsos chapados e botões de coco. Tecido envelhece com o uso — fica mais bonito a cada lavagem.', sizes: ['1', '2', '3', '4', '6', '8'], unavail: [], galleryLabels: ['frente', 'costas', 'bolso', 'detalhe botão'] },
-  { id: 'p3', name: 'Camisa Borboleta', nameParts: ['Camisa', 'Borboleta'], col: 'Jardim Encantado', price: 'R$ 129', tint: 'sage', label: 'foto · camisa bordada' },
+  { id: 'p3', name: 'Camisa Borboleta', nameParts: ['Camisa', 'Borboleta'], col: 'Jardim Encantado', price: 'R$ 129', tint: 'sage', label: 'foto · camisa bordada', sizes: ['1m', '3m', '6m', '9m', '1', '2', '4', '6', '8', '10', '12', '14'] },
   { id: 'p4', name: 'Bermuda Cipó', nameParts: ['Bermuda', 'Cipó'], col: 'Doce Aventura', price: 'R$ 109', tint: 'moss', label: 'foto · bermuda algodão' },
-  { id: 'p5', name: 'Conjunto Pétala', nameParts: ['Conjunto', 'Pétala'], col: 'Jardim Encantado', price: 'R$ 219', tint: 'clay', label: 'foto · conjunto blusa + saia' },
+  { id: 'p5', name: 'Conjunto Pétala', nameParts: ['Conjunto', 'Pétala'], col: 'Jardim Encantado', price: 'R$ 219', tint: 'clay', label: 'foto · conjunto blusa + saia', sizes: ['1m', '3m', '6m', '9m', '1', '2', '4', '6', '8', '10', '12', '14'] },
 ];
 
 export const COLLECTIONS: Record<string, Collection> = {
@@ -85,7 +85,7 @@ export const GENDER_DATA: Record<string, GenderData> = {
   meninas: {
     id: 'meninas',
     label: ['Para', 'meninas'],
-    eyebrow: 'todos os produtos · 0–12 anos',
+    eyebrow: 'todos os produtos · 1m–14',
     tint: 'rose',
     intro: 'Tudo o que temos para as meninas hoje — coleção atual e arquivo. Filtre por idade, coleção ou tipo de peça.',
     collections: ['jardim'],
@@ -93,12 +93,36 @@ export const GENDER_DATA: Record<string, GenderData> = {
   meninos: {
     id: 'meninos',
     label: ['Para', 'meninos'],
-    eyebrow: 'todos os produtos · 0–12 anos',
+    eyebrow: 'todos os produtos · 1m–14',
     tint: 'ochre',
     intro: 'Tudo o que temos para os meninos hoje — coleção atual e arquivo. Filtre por idade, coleção ou tipo de peça.',
     collections: ['doce'],
   },
 };
+
+export interface MedidaRow {
+  manequim: string;
+  torax: number;
+  cintura: number;
+  comprimento: number;
+}
+
+export const TABELA_MEDIDAS: MedidaRow[] = [
+  { manequim: '1m',  torax: 40, cintura: 39, comprimento: 32 },
+  { manequim: '3m',  torax: 44, cintura: 41, comprimento: 35 },
+  { manequim: '6m',  torax: 46, cintura: 43, comprimento: 38 },
+  { manequim: '9m',  torax: 48, cintura: 44, comprimento: 41 },
+  { manequim: '1',   torax: 50, cintura: 48, comprimento: 44 },
+  { manequim: '2',   torax: 53, cintura: 52, comprimento: 50 },
+  { manequim: '4',   torax: 57, cintura: 56, comprimento: 60 },
+  { manequim: '6',   torax: 61, cintura: 58, comprimento: 65 },
+  { manequim: '8',   torax: 66, cintura: 60, comprimento: 70 },
+  { manequim: '10',  torax: 70, cintura: 62, comprimento: 75 },
+  { manequim: '12',  torax: 75, cintura: 64, comprimento: 80 },
+  { manequim: '14',  torax: 78, cintura: 66, comprimento: 85 },
+];
+
+export const SIZES_MENINAS = TABELA_MEDIDAS.map(r => r.manequim);
 
 export const TESTIMONIALS = [
   { q: 'A Manu vive nas roupas da Pingo. O tecido é macio de um jeito que parece carinho — e ela mesma escolhe o que vai vestir.', name: 'Marina Vasques', role: 'mãe da Manuela, 4' },
