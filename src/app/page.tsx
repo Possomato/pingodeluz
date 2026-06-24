@@ -40,9 +40,9 @@ export default function HomePage() {
       <div className="pdl-genders">
         {hpConfig.meninas.visible && (
           <div className="pdl-gender-card" onClick={() => router.push('/genero/meninas')}>
-            <PdlImg tint="rose" imageUrl={hpConfig.meninas.imageUrls[0]} label="meninas · 1–12 anos" />
+            <PdlImg tint="rose" imageUrl={hpConfig.meninas.imageUrls[0]} label="meninas · 1m–14" />
             <div className="pdl-gender-overlay">
-              <span className="top">1–12 anos</span>
+              <span className="top">1m–14</span>
               <div className="bottom">
                 <div className="label">Para<em>meninas</em></div>
                 <div className="meta">vestidos, conjuntos e mais</div>
@@ -53,9 +53,9 @@ export default function HomePage() {
         )}
         {hpConfig.meninos.visible && (
           <div className="pdl-gender-card" onClick={() => router.push('/genero/meninos')}>
-            <PdlImg tint="ochre" imageUrl={hpConfig.meninos.imageUrls[0]} label="meninos · 1–12 anos" />
+            <PdlImg tint="ochre" imageUrl={hpConfig.meninos.imageUrls[0]} label="meninos · 1m–14" />
             <div className="pdl-gender-overlay">
-              <span className="top">1–12 anos</span>
+              <span className="top">1m–14</span>
               <div className="bottom">
                 <div className="label">Para<em>meninos</em></div>
                 <div className="meta">macacões, bermudas e mais</div>
@@ -140,21 +140,21 @@ export default function HomePage() {
             <div className="pdl-age">
               <div>
                 <div className="pdl-age-label">recém-chegados</div>
-                <div className="pdl-age-num">0<em>–</em>2</div>
+                <div className="pdl-age-num">1m<em>–</em>9m</div>
               </div>
               <div className="pdl-age-desc">primeiros passos, primeiros vestidinhos</div>
             </div>
             <div className="pdl-age">
               <div>
                 <div className="pdl-age-label">descobridores</div>
-                <div className="pdl-age-num">3<em>–</em>6</div>
+                <div className="pdl-age-num">1<em>–</em>4</div>
               </div>
               <div className="pdl-age-desc">imaginação solta, joelhos sujos</div>
             </div>
             <div className="pdl-age">
               <div>
                 <div className="pdl-age-label">aventureiros</div>
-                <div className="pdl-age-num">7<em>–</em>12</div>
+                <div className="pdl-age-num">6<em>–</em>14</div>
               </div>
               <div className="pdl-age-desc">já escolhem sozinhos o que vestir</div>
             </div>
