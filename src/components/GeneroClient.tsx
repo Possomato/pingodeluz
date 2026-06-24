@@ -39,7 +39,7 @@ export default function GeneroClient({
     return c.products.map(p => ({ ...p, colName: c.name.join(' '), colId: cid }));
   });
   const colChips = g.collections.map(cid => collections[cid]?.name.join(' ')).filter(Boolean) as string[];
-  const filters = ['todas', '0–2 anos', '3–6 anos', '7–12 anos', ...colChips, 'vestidos', 'conjuntos', 'sob encomenda'];
+  const filters = ['todas', 'bebê · 1m–9m', 'pequenos · 1–4', 'maiores · 6–14', ...colChips];
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 220);
