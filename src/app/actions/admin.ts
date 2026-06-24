@@ -2,7 +2,7 @@
 
 import { createServiceClient } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
-import type { Product, Collection } from '@/lib/data';
+import type { Product, Collection, HomepageSection } from '@/lib/data';
 
 function productToRow(p: Product) {
   return {
@@ -54,4 +54,16 @@ export async function upsertCollectionAction(c: Collection) {
   if (error) throw new Error(error.message);
   revalidatePath('/');
   revalidatePath(`/colecao/${c.id}`);
+}
+
+export async function upsertHomepageSectionAction(section: HomepageSection) {
+  const supabase = createServiceClient();
+  const { error } = await supabase.from('homepage_config').upsert({
+    id: section.id,
+    visible: section.visible,
+    image_urls: section.imageUrls,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath('/');
 }
