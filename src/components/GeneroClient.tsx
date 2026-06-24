@@ -15,6 +15,7 @@ type ProductWithMeta = {
   tint: string;
   label: string;
   price: string;
+  imageUrl?: string;
   colName: string;
   colId: string;
 };
@@ -104,11 +105,13 @@ export default function GeneroClient({
           <div className="pdl-coll-grid">
             {products.map(p => (
               <div key={p.id} className="pdl-prod" onClick={() => router.push(`/produto/${p.id}`)}>
-                <PdlImg tint={p.tint} label={p.label} />
-                <div className="pdl-prod-name">{p.name}</div>
-                <div className="pdl-prod-meta">
-                  <span className="pdl-prod-col">{p.colName}</span>
-                  <span className="pdl-prod-price">{p.price}</span>
+                <PdlImg tint={p.tint} imageUrl={p.imageUrl} label={p.label} />
+                <div className="pdl-prod-info">
+                  <div className="pdl-prod-name">{p.name}</div>
+                  <div className="pdl-prod-meta">
+                    <span className="pdl-prod-col">{p.colName}</span>
+                    <span className="pdl-prod-price">{p.price?.startsWith('R$') ? p.price : `R$ ${p.price}`}</span>
+                  </div>
                 </div>
               </div>
             ))}

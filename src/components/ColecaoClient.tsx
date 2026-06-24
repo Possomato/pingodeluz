@@ -37,7 +37,7 @@ export default function ColecaoClient({ c, filters }: { c: Collection; filters: 
       </div>
 
       <div className="pdl-coll-hero pdl-colpage-hero">
-        <PdlImg tint={c.tint} label={`editorial · ${c.name.join(' ').toLowerCase()}`} style={{ position: 'absolute', inset: 0 }} />
+        <PdlImg tint={c.tint} imageUrl={c.imageUrl} label={`editorial · ${c.name.join(' ').toLowerCase()}`} style={{ position: 'absolute', inset: 0 }} />
         <div className="pdl-coll-hero-overlay">
           <div className="pdl-coll-hero-top">
             <div className="pdl-coll-hero-eyebrow">{c.eyebrow}</div>
@@ -80,11 +80,13 @@ export default function ColecaoClient({ c, filters }: { c: Collection; filters: 
           <div className="pdl-coll-grid">
             {c.products.map(p => (
               <div key={p.id} className="pdl-prod" onClick={() => router.push(`/produto/${p.id}`)}>
-                <PdlImg tint={p.tint} label={p.label} />
-                <div className="pdl-prod-name">{p.name}</div>
-                <div className="pdl-prod-meta">
-                  <span className="pdl-prod-col">{c.name.join(' ')}</span>
-                  <span className="pdl-prod-price">{p.price}</span>
+                <PdlImg tint={p.tint} imageUrl={p.imageUrl} label={p.label} />
+                <div className="pdl-prod-info">
+                  <div className="pdl-prod-name">{p.name}</div>
+                  <div className="pdl-prod-meta">
+                    <span className="pdl-prod-col">{c.name.join(' ')}</span>
+                    <span className="pdl-prod-price">{p.price?.startsWith('R$') ? p.price : `R$ ${p.price}`}</span>
+                  </div>
                 </div>
               </div>
             ))}

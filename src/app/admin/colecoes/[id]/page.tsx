@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useAdmin } from '@/context/AdminContext';
+import { uploadImageAction } from '@/app/actions/upload';
 
 const TINTS = ['rose', 'ochre', 'sage', 'clay', 'moss', 'ink'];
 const TINT_COLORS: Record<string, string> = {
@@ -80,14 +81,33 @@ export default function EditColecaoPage() {
         </div>
 
         <div className="adm-field">
-          <label>URL da imagem hero</label>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-            <input value={form.imageUrl} onChange={e => set('imageUrl', e.target.value)} placeholder="https://…" style={{ flex: 1 }} />
-            {form.imageUrl && (
-              <img src={form.imageUrl} alt="" width={80} height={60} style={{ borderRadius: 6, objectFit: 'cover', border: '1px solid #e5e5e5', flexShrink: 0 }}
-                onError={e => (e.currentTarget.style.display = 'none')} />
-            )}
-          </div>
+          <label>Imagem hero</label>
+          {form.imageUrl && (
+            <img
+              src={form.imageUrl}
+              alt="preview"
+              width={160}
+              height={100}
+              style={{ objectFit: 'cover', borderRadius: 6, marginBottom: 8, display: 'block', border: '1px solid #e5e5e5' }}
+            />
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const fd = new FormData();
+              fd.append('file', file);
+              const url = await uploadImageAction(fd);
+              set('imageUrl', url);
+            }}
+          />
+          {form.imageUrl && (
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4, wordBreak: 'break-all' }}>
+              {form.imageUrl}
+            </div>
+          )}
         </div>
 
         <div className="adm-field">

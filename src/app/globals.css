@@ -73,11 +73,11 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
 /* header */
 .pdl-header {
   position: sticky; top: 0; z-index: 30;
-  padding: 16px 20px 12px;
+  padding: 12px 20px 8px;
   background: linear-gradient(180deg, var(--cream) 70%, rgba(245,239,227,0.0));
   display: flex; align-items: center; justify-content: space-between;
 }
-.pdl-header.solid { background: var(--cream); border-bottom: 1px solid var(--border-soft); padding-bottom: 14px; }
+.pdl-header.solid { background: var(--cream); border-bottom: 1px solid var(--border-soft); padding-bottom: 8px; }
 .pdl-header-nav { display: none; }
 .pdl-header-icon { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; }
 .pdl-bag-count {
@@ -87,7 +87,7 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
   font-size: 9px; font-weight: 600; display: flex; align-items: center; justify-content: center;
 }
 .pdl-logo { font-family: var(--serif); font-size: 19px; font-weight: 500; letter-spacing: 0; line-height: 1; display: flex; align-items: center; gap: 4px; cursor: pointer; }
-.pdl-logo .pdl-logo-sub { font-family: var(--editorial); font-style: italic; font-size: 12px; font-weight: 400; margin-left: 2px; color: var(--muted); }
+.pdl-logo .pdl-logo-sub { font-family: var(--editorial); font-style: italic; font-size: 0.6em; font-weight: 400; margin-left: 2px; color: var(--muted); }
 
 /* gender entry */
 .pdl-genders { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 4px 16px 8px; }
@@ -148,6 +148,7 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
 .pdl-products::-webkit-scrollbar { display: none; }
 .pdl-prod { flex: 0 0 60%; scroll-snap-align: start; cursor: pointer; }
 .pdl-prod .pdl-img { aspect-ratio: 3/4; border-radius: 3px; margin-bottom: 10px; }
+.pdl-prod .pdl-prod-info { padding: 0 4px; }
 .pdl-prod .pdl-prod-name { font-family: var(--editorial); font-size: 15px; line-height: 1.3; font-weight: 500; color: var(--ink); }
 .pdl-prod .pdl-prod-meta { margin-top: 4px; display: flex; justify-content: space-between; align-items: baseline; font-size: 11.5px; color: var(--muted); }
 .pdl-prod .pdl-prod-price { font-family: var(--sans); font-weight: 500; color: var(--ink); font-size: 12px; letter-spacing: 0.02em; }
@@ -611,20 +612,23 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
   .pdl-back-bar { display: none !important; }
 
   /* Desktop header */
-  .pdl-header { padding: 0; height: 64px; align-items: center; background: var(--cream); border-bottom: 1px solid var(--border-soft); position: sticky; top: 0; z-index: 30; }
-  .pdl-header.solid { background: var(--cream); }
+  .pdl-header { padding: 0 32px; height: 56px; align-items: center; background: var(--cream); border-bottom: 1px solid var(--border-soft); position: sticky; top: 0; z-index: 30; }
+  .pdl-header.solid { background: var(--cream); padding: 0; }
   .pdl-header-menu { display: none; }
-  .pdl-header-nav { display: flex; gap: 2px; align-items: center; flex: 1; justify-content: center; }
-  .pdl-header-nav a { font-size: 13px; font-weight: 600; letter-spacing: 0.04em; color: var(--ink-soft); padding: 6px 14px; border-radius: 999px; text-decoration: none; transition: background 0.15s, color 0.15s; }
+  .pdl-header-nav { display: flex; gap: 4px; align-items: center; flex: 1; justify-content: center; }
+  .pdl-header-nav a { font-size: 14px; font-weight: 600; letter-spacing: 0.04em; color: var(--ink-soft); padding: 8px 18px; border-radius: 999px; text-decoration: none; transition: background 0.15s, color 0.15s; }
   .pdl-header-nav a:hover { background: var(--cream-deep); color: var(--ink); }
-  .pdl-header-icons { display: flex; gap: 14px; align-items: center; }
+  .pdl-header-icons { display: flex; gap: 18px; align-items: center; }
+  .pdl-header-icon { width: 28px; height: 28px; }
+  .pdl-header-icons svg { width: 22px; height: 22px; }
+  .pdl-logo { font-size: 24px; }
 
   /* Show home top-padding offset since pdl-back-bar is hidden */
   .pdl-welcome { padding-top: 48px; }
 
   /* Home — gender cards side by side */
   .pdl-genders { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .pdl-gender-card { height: 420px; }
+  .pdl-gender-card { height: 260px; aspect-ratio: auto; }
 
   /* Home — best sellers 4-column grid */
   .pdl-products { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; overflow: visible; padding-bottom: 0; }
@@ -639,7 +643,7 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
 
   /* Home — collections side by side */
   .pdl-collections { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .pdl-col-card { height: 400px; }
+  .pdl-col-card { height: 240px; aspect-ratio: auto; }
 
   /* Home — age filters row stays horizontal, just wider gap */
   .pdl-ages { gap: 32px; }
@@ -662,8 +666,8 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
   .pdl-sidebar-filter:hover, .pdl-sidebar-filter.active { background: var(--cream-deep); color: var(--ink); }
 
   /* Collection/gender hero shorter on desktop */
-  .pdl-colpage-hero { height: 240px !important; }
-  .pdl-genpage-hero { height: 200px !important; }
+  .pdl-colpage-hero { height: 180px !important; }
+  .pdl-genpage-hero { height: 160px !important; }
 
   /* Hide inline filter chips on desktop (replaced by sidebar) */
   .pdl-coll-filters { display: none; }
@@ -676,7 +680,7 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
   /* Product detail — two-column */
   .pdl-prodpage-cols { display: grid; grid-template-columns: 55% 45%; gap: 48px; align-items: start; margin-top: 24px; }
   .pdl-prodpage-right { position: sticky; top: 80px; }
-  .pdl-prodpage-gallery { height: 480px; border-radius: 4px; }
+  .pdl-prodpage-gallery { height: 380px; border-radius: 4px; }
 
   /* Hide sticky mobile CTA on desktop — button is inline in right panel */
   .pdl-prodpage-cta-desktop { display: block; }
@@ -705,12 +709,25 @@ html, body { margin: 0; padding: 0; background: var(--cream); }
   .pdl-cart-title { font-size: 32px; }
   .pdl-prodpage-title { font-size: 28px; }
   .pdl-section-head h2 { font-size: 24px; }
+
+  /* Footer full-bleed — background spans full viewport, content stays aligned */
+  .pdl-footer {
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    padding-left: max(48px, calc((100vw - 1200px) / 2 + 48px));
+    padding-right: max(48px, calc((100vw - 1200px) / 2 + 48px));
+  }
 }
 
 /* Hover states — only on pointer devices at desktop width */
 @media (min-width: 768px) and (hover: hover) {
-  .pdl-prod { cursor: pointer; transition: transform 0.18s, box-shadow 0.18s; }
-  .pdl-prod:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(42,36,25,0.10); }
+  .pdl-prod { cursor: pointer; transition: transform 0.22s cubic-bezier(0.25,0.46,0.45,0.94), box-shadow 0.22s cubic-bezier(0.25,0.46,0.45,0.94); }
+  .pdl-prod:hover { transform: translateY(-5px); box-shadow: 0 12px 32px rgba(42,36,25,0.13); }
+  .pdl-prod:hover .pdl-img { filter: brightness(1.03); }
+  .pdl-prod:hover .pdl-img img { transform: scale(1.03); transition: transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94); }
+  .pdl-prod .pdl-img img { transition: transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94); }
 
   .pdl-col-card { transition: filter 0.18s; }
   .pdl-col-card:hover .pdl-img { filter: brightness(0.95); }

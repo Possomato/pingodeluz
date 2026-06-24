@@ -54,7 +54,14 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   };
 
   const addProduct = async (p: Omit<Product, 'id'>) => {
-    const id = 'adm-' + Date.now();
+    const base = (p.name ?? '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    const slug = base || 'produto';
+    const taken = products.some(x => x.id === slug);
+    const id = taken ? `${slug}-${Date.now()}` : slug;
     const newProduct: Product = { ...p, id };
     setProducts(prev => [...prev, newProduct]); // optimistic
     await upsertProductAction(newProduct).catch(console.error); // persist

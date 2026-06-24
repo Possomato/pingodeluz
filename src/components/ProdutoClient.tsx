@@ -43,7 +43,7 @@ export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
       <div className="pdl-prodpage-cols">
         <div>
           <div className="pdl-prodpage-gallery">
-            <PdlImg tint={p.tint} label={`foto · ${p.name.toLowerCase()} · ${labels[galleryIdx]}`} />
+            <PdlImg tint={p.tint} imageUrl={p.imageUrl} label={`foto · ${p.name.toLowerCase()} · ${labels[galleryIdx]}`} />
             <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 5 }}>
               {labels.map((_, i) => (
                 <span key={i} style={{ width: i === galleryIdx ? 18 : 5, height: 5, borderRadius: 999, background: i === galleryIdx ? 'rgba(251,246,233,0.95)' : 'rgba(251,246,233,0.45)', transition: 'width .2s' }} />
@@ -53,7 +53,7 @@ export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
           <div className="pdl-prodpage-gallery-strip">
             {labels.map((l, i) => (
               <div key={i} onClick={() => setGalleryIdx(i)} className={`pdl-prodpage-thumb ${i === galleryIdx ? 'active' : ''}`}>
-                <PdlImg tint={p.tint} ratio="3/4" />
+                <PdlImg tint={p.tint} imageUrl={p.imageUrl} ratio="3/4" />
               </div>
             ))}
           </div>
@@ -164,7 +164,7 @@ export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
         <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none' }}>
           {HOME_PRODUCTS.slice(1, 4).map(rp => (
             <div key={rp.id} style={{ flex: '0 0 48%' }} onClick={() => router.push(`/produto/${rp.id}`)}>
-              <PdlImg tint={rp.tint} style={{ aspectRatio: '3/4', borderRadius: 3, marginBottom: 8 }} />
+              <PdlImg tint={rp.tint} imageUrl={rp.imageUrl} style={{ aspectRatio: '3/4', borderRadius: 3, marginBottom: 8 }} />
               <div style={{ fontFamily: 'var(--editorial)', fontSize: 13, color: 'var(--ink)' }}>{rp.name}</div>
               <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>{rp.price}</div>
             </div>

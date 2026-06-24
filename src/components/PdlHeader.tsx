@@ -23,8 +23,6 @@ export default function PdlHeader({ scrolled, onMenu }: PdlHeaderProps) {
       <nav className="pdl-header-nav">
         <a href="/genero/meninas">Meninas</a>
         <a href="/genero/meninos">Meninos</a>
-        <a href="/colecao/jardim">Jardim Encantado</a>
-        <a href="/colecao/doce">Doce Aventura</a>
       </nav>
       <div className="pdl-header-icons" style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
         <button className="pdl-header-icon" onClick={() => router.push('/perfil')} aria-label="Perfil">
