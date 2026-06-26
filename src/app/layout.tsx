@@ -23,7 +23,6 @@ const nunitoSans = Nunito_Sans({
 export const metadata: Metadata = {
   title: "Pingo de Luz · e-commerce infantil",
   description: "Roupas feitas com carinho para os pequenos pingos que iluminam a casa.",
-  icons: { icon: '/icone-logo.png', apple: '/icone-logo.png' },
 };
 
 export default function RootLayout({
