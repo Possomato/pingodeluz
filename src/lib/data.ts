@@ -14,6 +14,8 @@ export interface Product {
   galleryLabels?: string[];
   imageUrl?: string; // external photo URL (admin-set)
   gender?: 'meninas' | 'meninos' | 'unissex';
+  type?: string; // ex: vestido, macacão, camisa, bermuda…
+  sizeTableId?: string;
 }
 
 export interface Collection {
@@ -124,6 +126,25 @@ export const TABELA_MEDIDAS: MedidaRow[] = [
 
 export const SIZES_MENINAS = TABELA_MEDIDAS.map(r => r.manequim);
 
+export interface SizeTable {
+  id: string;
+  name: string;
+  columns: string[];
+  rows: { size: string; values: Record<string, number> }[];
+}
+
+export const DEFAULT_SIZE_TABLES: SizeTable[] = [
+  {
+    id: 'padrao-meninas',
+    name: 'Padrão meninas',
+    columns: ['tórax', 'cintura', 'comprimento'],
+    rows: TABELA_MEDIDAS.map(r => ({
+      size: r.manequim,
+      values: { 'tórax': r.torax, 'cintura': r.cintura, 'comprimento': r.comprimento },
+    })),
+  },
+];
+
 export const TESTIMONIALS = [
   { q: 'A Manu vive nas roupas da Pingo. O tecido é macio de um jeito que parece carinho — e ela mesma escolhe o que vai vestir.', name: 'Marina Vasques', role: 'mãe da Manuela, 4' },
   { q: 'Comprei o primeiro macacão do Theo na coleção Doce Aventura. Hoje guardo ele numa caixa — vai virar herança do irmão.', name: 'Beatriz Andrade', role: 'mãe do Theo, 2' },
@@ -220,6 +241,8 @@ function rowToProduct(row: Record<string, unknown>): Product {
     galleryLabels: row.gallery_labels as string[] | undefined,
     imageUrl: row.image_url as string | undefined,
     gender: row.gender as 'meninas' | 'meninos' | 'unissex' | undefined,
+    type: (row.product_type ?? row.type) as string | undefined,
+    sizeTableId: (row.size_table_id ?? row.sizeTableId) as string | undefined,
   };
 }
 
@@ -307,6 +330,30 @@ export async function fetchProductById(id: string): Promise<Product> {
   }
 }
 
+export interface InstagramPost {
+  id: string;
+  media_url: string;
+  thumbnail_url?: string;
+  permalink: string;
+  media_type: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM';
+}
+
+export async function fetchInstagramFeed(): Promise<InstagramPost[]> {
+  const token = process.env.INSTAGRAM_ACCESS_TOKEN;
+  if (!token) return [];
+  try {
+    const res = await fetch(
+      `https://graph.instagram.com/me/media?fields=id,media_type,media_url,thumbnail_url,permalink&limit=6&access_token=${token}`,
+      { next: { revalidate: 3600 } }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.data ?? []) as InstagramPost[];
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchHomepageConfig(): Promise<Record<HomepageSectionId, HomepageSection>> {
   try {
     const res = await fetch(
@@ -334,5 +381,52 @@ export async function fetchHomepageConfig(): Promise<Record<HomepageSectionId, H
     return result;
   } catch {
     return DEFAULT_HOMEPAGE_CONFIG;
+  }
+}
+
+export function getSizeTables(): SizeTable[] {
+  if (typeof window === 'undefined') return DEFAULT_SIZE_TABLES;
+  try {
+    const saved = localStorage.getItem('pdl_size_tables');
+    const parsed = saved ? JSON.parse(saved) : [];
+    return parsed.length > 0 ? parsed : DEFAULT_SIZE_TABLES;
+  } catch {
+    return DEFAULT_SIZE_TABLES;
+  }
+}
+
+export async function fetchSizeTables(): Promise<SizeTable[]> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/size_tables?select=*&order=name`,
+      {
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+        },
+        next: { revalidate: 60 },
+      }
+    );
+    if (!res.ok) return DEFAULT_SIZE_TABLES;
+    const rows = await res.json();
+    if (!rows.length) return DEFAULT_SIZE_TABLES;
+    return rows.map((r: Record<string, unknown>) => ({
+      id: r.id as string,
+      name: r.name as string,
+      columns: r.columns as string[],
+      rows: r.rows as SizeTable['rows'],
+    }));
+  } catch {
+    return DEFAULT_SIZE_TABLES;
+  }
+}
+
+export async function fetchSizeTableById(id: string | undefined): Promise<SizeTable | null> {
+  if (!id) return null;
+  try {
+    const all = await fetchSizeTables();
+    return all.find(t => t.id === id) ?? null;
+  } catch {
+    return null;
   }
 }
