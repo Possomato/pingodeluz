@@ -54,12 +54,22 @@ export default function ProdutoClient({
       <div className="pdl-prodpage-cols">
         <div>
           <div className="pdl-prodpage-gallery">
-            <PdlImg tint={p.tint} imageUrl={imgs[galleryIdx] ?? p.imageUrl} label={`foto · ${p.name.toLowerCase()} · ${labels[galleryIdx]}`} />
-            <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 5 }}>
-              {labels.map((_, i) => (
-                <span key={i} style={{ width: i === galleryIdx ? 18 : 5, height: 5, borderRadius: 999, background: i === galleryIdx ? 'rgba(251,246,233,0.95)' : 'rgba(251,246,233,0.45)', transition: 'width .2s' }} />
-              ))}
+            <div className={`pdl-prodpage-gallery-img pdl-img tint-${p.tint}`}>
+              {(imgs[galleryIdx] ?? p.imageUrl) && (
+                <img
+                  src={imgs[galleryIdx] ?? p.imageUrl}
+                  alt={`${p.name} · ${labels[galleryIdx]}`}
+                  className="pdl-prodpage-gallery-photo"
+                />
+              )}
             </div>
+            {imgs.length > 1 && (
+              <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 5 }}>
+                {imgs.map((_, i) => (
+                  <span key={i} style={{ width: i === galleryIdx ? 18 : 5, height: 5, borderRadius: 999, background: i === galleryIdx ? 'rgba(251,246,233,0.95)' : 'rgba(251,246,233,0.45)', transition: 'width .2s' }} />
+                ))}
+              </div>
+            )}
           </div>
           <div className="pdl-prodpage-gallery-strip">
             {labels.map((l, i) => (
