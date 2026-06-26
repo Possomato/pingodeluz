@@ -10,6 +10,11 @@ import { TABELA_MEDIDAS, SIZES_MENINAS, fetchCatalog, calcInstallments } from '@
 import type { Product, SizeTable, PaymentConfig } from '@/lib/data';
 import { useCart } from '@/context/CartContext';
 
+const TINT_BG: Record<string, string> = {
+  rose: '#e8d7c8', sage: '#c8d2bf', ochre: '#d9c19a',
+  clay: '#d6b89e', moss: '#b6c0a3', ink: '#4a3f30',
+};
+
 export default function ProdutoClient({
   p, id, sizeTable, paymentConfig,
 }: {
@@ -54,7 +59,7 @@ export default function ProdutoClient({
       <div className="pdl-prodpage-cols">
         <div>
           <div className="pdl-prodpage-gallery">
-            <div className={`pdl-prodpage-gallery-img pdl-img tint-${p.tint}`}>
+            <div className="pdl-prodpage-gallery-img" style={{ background: TINT_BG[p.tint ?? ''] ?? 'var(--cream-deep)' }}>
               {(imgs[galleryIdx] ?? p.imageUrl) && (
                 <img
                   src={imgs[galleryIdx] ?? p.imageUrl}
@@ -64,9 +69,13 @@ export default function ProdutoClient({
               )}
             </div>
             {imgs.length > 1 && (
-              <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 5 }}>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 5, padding: '8px 0 0' }}>
                 {imgs.map((_, i) => (
-                  <span key={i} style={{ width: i === galleryIdx ? 18 : 5, height: 5, borderRadius: 999, background: i === galleryIdx ? 'rgba(251,246,233,0.95)' : 'rgba(251,246,233,0.45)', transition: 'width .2s' }} />
+                  <span
+                    key={i}
+                    onClick={() => setGalleryIdx(i)}
+                    style={{ width: i === galleryIdx ? 18 : 5, height: 5, borderRadius: 999, background: i === galleryIdx ? 'var(--ink)' : 'var(--border)', transition: 'width .2s', cursor: 'pointer', display: 'block' }}
+                  />
                 ))}
               </div>
             )}
