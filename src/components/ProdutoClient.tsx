@@ -1,25 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PdlImg from '@/components/PdlImg';
 import PdlHeader from '@/components/PdlHeader';
 import PdlDrawer from '@/components/PdlDrawer';
 import { IconChevronLeft, IconBag, IconChevronDown, IconArrowRight } from '@/components/Icons';
-import type { Product } from '@/lib/data';
-import { HOME_PRODUCTS, TABELA_MEDIDAS, SIZES_MENINAS } from '@/lib/data';
+import type { Product, SizeTable } from '@/lib/data';
+import { TABELA_MEDIDAS, SIZES_MENINAS, fetchCatalog } from '@/lib/data';
 import { useCart } from '@/context/CartContext';
 
-export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
+export default function ProdutoClient({ p, id, sizeTable }: { p: Product; id: string; sizeTable: SizeTable | null }) {
   const router = useRouter();
   const { addToCart, cartCount } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [size, setSize] = useState<string | null>(null);
+  const [related, setRelated] = useState<Product[]>([]);
+
+  useEffect(() => {
+    fetchCatalog().then(all => {
+      setRelated(all.filter(r => r.id !== id).slice(0, 3));
+    }).catch(() => {});
+  }, [id]);
   const [galleryIdx, setGalleryIdx] = useState(0);
   const [openAcc, setOpenAcc] = useState<string | null>('compo');
 
-  const sizes = p.sizes || SIZES_MENINAS;
-  const unavail = p.unavail || [];
+  const sizes = p.sizes?.length ? p.sizes : SIZES_MENINAS;
   const labels = p.galleryLabels || ['frente', 'costas', 'detalhe'];
   const nameParts = p.nameParts || [p.name, ''];
 
@@ -71,18 +77,15 @@ export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
             <div className="pdl-prodpage-section">
               <h4><span>tamanho</span></h4>
               <div className="pdl-prodpage-sizes">
-                {sizes.map(s => {
-                  const ua = unavail.includes(s);
-                  return (
-                    <div
-                      key={s}
-                      className={`pdl-size ${size === s ? 'selected' : ''} ${ua ? 'unavail' : ''}`}
-                      onClick={() => !ua && setSize(s)}
-                    >
-                      {s}
-                    </div>
-                  );
-                })}
+                {sizes.map(s => (
+                  <div
+                    key={s}
+                    className={`pdl-size ${size === s ? 'selected' : ''}`}
+                    onClick={() => setSize(s)}
+                  >
+                    {s}
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -103,30 +106,48 @@ export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
             <div className="pdl-size-chart">
               <div className="pdl-size-chart-note">toque no tamanho para ver suas medidas</div>
               <div className="pdl-size-chart-scroll">
-                <table className="pdl-size-table">
-                  <thead>
-                    <tr>
-                      <th>tam.</th>
-                      <th>tórax</th>
-                      <th>cintura</th>
-                      <th>compr.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {TABELA_MEDIDAS.filter(row => sizes.includes(row.manequim)).map(row => (
-                      <tr
-                        key={row.manequim}
-                        className={`pdl-size-table-row ${size === row.manequim ? 'active' : ''}`}
-                        onClick={() => setSize(row.manequim)}
-                      >
-                        <td className="pdl-size-table-maneq">{row.manequim}</td>
-                        <td>{row.torax}</td>
-                        <td>{row.cintura}</td>
-                        <td>{row.comprimento}</td>
+                {sizeTable ? (
+                  <table className="pdl-size-table">
+                    <thead>
+                      <tr>
+                        <th>tam.</th>
+                        {sizeTable.columns.map(col => <th key={col}>{col}</th>)}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {sizeTable.rows.filter(row => sizes.includes(row.size)).map(row => (
+                        <tr
+                          key={row.size}
+                          className={`pdl-size-table-row ${size === row.size ? 'active' : ''}`}
+                          onClick={() => setSize(row.size)}
+                        >
+                          <td className="pdl-size-table-maneq">{row.size}</td>
+                          {sizeTable.columns.map(col => <td key={col}>{row.values[col] ?? '—'}</td>)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <table className="pdl-size-table">
+                    <thead>
+                      <tr><th>tam.</th><th>tórax</th><th>cintura</th><th>compr.</th></tr>
+                    </thead>
+                    <tbody>
+                      {TABELA_MEDIDAS.filter(row => sizes.includes(row.manequim)).map(row => (
+                        <tr
+                          key={row.manequim}
+                          className={`pdl-size-table-row ${size === row.manequim ? 'active' : ''}`}
+                          onClick={() => setSize(row.manequim)}
+                        >
+                          <td className="pdl-size-table-maneq">{row.manequim}</td>
+                          <td>{row.torax}</td>
+                          <td>{row.cintura}</td>
+                          <td>{row.comprimento}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
               <div className="pdl-size-chart-caption">medidas em centímetros · corpo da criança</div>
             </div>
@@ -183,18 +204,20 @@ export default function ProdutoClient({ p, id }: { p: Product; id: string }) {
         </div>
       </div>
 
-      <div style={{ marginTop: 36, padding: '0 0 36px' }}>
-        <div className="pdl-eyebrow" style={{ marginBottom: 14 }}>combina com</div>
-        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none' }}>
-          {HOME_PRODUCTS.slice(1, 4).map(rp => (
-            <div key={rp.id} style={{ flex: '0 0 48%' }} onClick={() => router.push(`/produto/${rp.id}`)}>
-              <PdlImg tint={rp.tint} imageUrl={rp.imageUrl} style={{ aspectRatio: '3/4', borderRadius: 3, marginBottom: 8 }} />
-              <div style={{ fontFamily: 'var(--editorial)', fontSize: 13, color: 'var(--ink)' }}>{rp.name}</div>
-              <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>{rp.price}</div>
-            </div>
-          ))}
+      {related.length > 0 && (
+        <div style={{ marginTop: 36, padding: '0 0 36px' }}>
+          <div className="pdl-eyebrow" style={{ marginBottom: 14 }}>combina com</div>
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none' }}>
+            {related.map(rp => (
+              <div key={rp.id} style={{ flex: '0 0 48%' }} onClick={() => router.push(`/produto/${rp.id}`)}>
+                <PdlImg tint={rp.tint} imageUrl={rp.imageUrl} style={{ aspectRatio: '3/4', borderRadius: 3, marginBottom: 8 }} />
+                <div style={{ fontFamily: 'var(--editorial)', fontSize: 13, color: 'var(--ink)' }}>{rp.name}</div>
+                <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>{rp.price?.startsWith('R$') ? rp.price : `R$ ${rp.price}`}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div style={{ height: 100 }} />
 
