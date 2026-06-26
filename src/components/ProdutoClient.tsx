@@ -59,7 +59,7 @@ export default function ProdutoClient({
       <div className="pdl-prodpage-cols">
         <div>
           <div className="pdl-prodpage-gallery">
-            <div className="pdl-prodpage-gallery-img" style={{ background: TINT_BG[p.tint ?? ''] ?? 'var(--cream-deep)' }}>
+            <div className="pdl-prodpage-gallery-img">
               {(imgs[galleryIdx] ?? p.imageUrl) && (
                 <img
                   src={imgs[galleryIdx] ?? p.imageUrl}
