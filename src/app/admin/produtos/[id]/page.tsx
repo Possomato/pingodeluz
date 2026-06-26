@@ -8,8 +8,8 @@ import PdlImg from '@/components/PdlImg';
 import { Product } from '@/lib/data';
 import { uploadImageAction } from '@/app/actions/upload';
 
-const SIZES = ['1', '2', '3', '4', '6', '8'];
 const TINTS = ['rose', 'ochre', 'sage', 'clay', 'moss', 'ink'];
+const TIPOS = ['vestido', 'macacão', 'camisa', 'blusa', 'bermuda', 'calça', 'conjunto', 'saia', 'suéter', 'camiseta', 'camisola', 'body', 'outro'];
 const TINT_COLORS: Record<string, string> = {
   rose: '#e8c5b0', ochre: '#c9a96e', sage: '#9eb89e',
   clay: '#c17c5a', moss: '#7a8c6a', ink: '#3a3530',
@@ -22,27 +22,12 @@ export function ProductForm({ initial, onSave }: {
   const [form, setForm] = useState<Partial<Product>>({
     name: '', col: 'Jardim Encantado', gender: 'meninas', price: '',
     installments: '', desc: '', imageUrl: '', tint: 'rose',
-    sizes: [...SIZES], unavail: [], stock: {},
     ...initial,
   });
+  const { sizeTables } = useAdmin();
   const [toast, setToast] = useState(false);
 
   const set = (key: keyof Product, val: unknown) => setForm(f => ({ ...f, [key]: val }));
-
-  const toggleSize = (s: string) => {
-    const has = form.sizes?.includes(s);
-    const nextSizes = has ? form.sizes!.filter(x => x !== s) : [...(form.sizes ?? []), s];
-    set('sizes', nextSizes);
-    const stock = form.stock ?? {};
-    set('unavail', nextSizes.filter(sz => !stock[sz] || stock[sz] === 0));
-  };
-
-  const setStock = (s: string, val: number) => {
-    const next = { ...(form.stock ?? {}), [s]: val };
-    set('stock', next);
-    const ua = (form.sizes ?? SIZES).filter(sz => !next[sz] || next[sz] === 0);
-    set('unavail', ua);
-  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +59,13 @@ export function ProductForm({ initial, onSave }: {
 
       <div className="adm-form-row">
         <div className="adm-field">
+          <label>Tipo de peça</label>
+          <select value={form.type ?? ''} onChange={e => set('type', e.target.value)}>
+            <option value="">— selecione —</option>
+            {TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div className="adm-field">
           <label>Gênero</label>
           <select value={form.gender ?? 'meninas'} onChange={e => set('gender', e.target.value as Product['gender'])}>
             <option value="meninas">Meninas</option>
@@ -81,15 +73,17 @@ export function ProductForm({ initial, onSave }: {
             <option value="unissex">Unissex</option>
           </select>
         </div>
+      </div>
+
+      <div className="adm-form-row">
         <div className="adm-field">
           <label>Preço</label>
           <input required value={form.price ?? ''} onChange={e => set('price', e.target.value)} placeholder="R$ 189" />
         </div>
-      </div>
-
-      <div className="adm-field">
-        <label>Parcelamento</label>
-        <input value={form.installments ?? ''} onChange={e => set('installments', e.target.value)} placeholder="em 3x de R$ 63 sem juros" />
+        <div className="adm-field">
+          <label>Parcelamento</label>
+          <input value={form.installments ?? ''} onChange={e => set('installments', e.target.value)} placeholder="em 3x de R$ 63 sem juros" />
+        </div>
       </div>
 
       <div className="adm-field">
@@ -148,25 +142,48 @@ export function ProductForm({ initial, onSave }: {
       </div>
 
       <div className="adm-field">
-        <label>Tamanhos + estoque</label>
-        <div className="adm-stock-grid">
-          {SIZES.map(s => (
-            <div key={s} className="adm-stock-item">
-              <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                <input type="checkbox" checked={form.sizes?.includes(s) ?? true} onChange={() => toggleSize(s)} style={{ width: 'auto' }} />
-                <span className="sz">{s}</span>
-              </label>
-              <input
-                type="number" min={0}
-                value={form.stock?.[s] ?? ''}
-                onChange={e => setStock(s, parseInt(e.target.value) || 0)}
-                disabled={!form.sizes?.includes(s)}
-                placeholder="qtd"
-              />
-            </div>
-          ))}
-        </div>
+        <label>Tabela de tamanhos</label>
+        <select
+          value={form.sizeTableId ?? ''}
+          onChange={e => {
+            const tableId = e.target.value;
+            const table = sizeTables.find(t => t.id === tableId);
+            set('sizeTableId', tableId);
+            set('sizes', table?.rows.map(r => r.size) ?? []);
+          }}
+        >
+          <option value="">— selecione uma tabela —</option>
+          {sizeTables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
       </div>
+
+      {form.sizeTableId && (() => {
+        const table = sizeTables.find(t => t.id === form.sizeTableId);
+        if (!table) return null;
+        return (
+          <div className="adm-field">
+            <label>Tamanhos disponíveis</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {table.rows.map(row => (
+                <label key={row.size} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    style={{ width: 'auto' }}
+                    checked={form.sizes?.includes(row.size) ?? false}
+                    onChange={() => {
+                      const next = form.sizes?.includes(row.size)
+                        ? form.sizes.filter(s => s !== row.size)
+                        : [...(form.sizes ?? []), row.size];
+                      set('sizes', next);
+                    }}
+                  />
+                  <span style={{ fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 13 }}>{row.size}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="adm-form-actions">
         <button type="submit" className="adm-btn adm-btn-primary">Salvar produto</button>
