@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Product, Collection, HOME_PRODUCTS, COLLECTIONS, fetchCatalog, fetchCollections, HomepageSection, HomepageSectionId, DEFAULT_HOMEPAGE_CONFIG, fetchHomepageConfig } from '@/lib/data';
-import { upsertProductAction, deleteProductAction, upsertCollectionAction, upsertHomepageSectionAction } from '@/app/actions/admin';
+import { Product, Collection, HOME_PRODUCTS, COLLECTIONS, fetchCatalog, fetchCollections, HomepageSection, HomepageSectionId, DEFAULT_HOMEPAGE_CONFIG, fetchHomepageConfig, SizeTable, DEFAULT_SIZE_TABLES, fetchSizeTables, getSizeTables } from '@/lib/data';
+import { upsertProductAction, deleteProductAction, upsertCollectionAction, upsertHomepageSectionAction, upsertSizeTableAction, deleteSizeTableAction } from '@/app/actions/admin';
 
 const ADMIN_PASSWORD = 'pingo2024';
 const AUTH_KEY = 'pdl_admin_auth';
@@ -19,6 +19,10 @@ interface AdminContextType {
   updateCollection: (id: string, c: Partial<Collection>) => Promise<void>;
   homepageConfig: Record<HomepageSectionId, HomepageSection>;
   updateHomepageSection: (id: HomepageSectionId, patch: Partial<HomepageSection>) => Promise<void>;
+  sizeTables: SizeTable[];
+  addSizeTable: (t: Omit<SizeTable, 'id'>) => Promise<void>;
+  updateSizeTable: (id: string, t: SizeTable) => Promise<void>;
+  deleteSizeTable: (id: string) => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType | null>(null);
@@ -28,6 +32,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(HOME_PRODUCTS);
   const [collections, setCollections] = useState<Record<string, Collection>>(COLLECTIONS);
   const [homepageConfig, setHomepageConfig] = useState<Record<HomepageSectionId, HomepageSection>>(DEFAULT_HOMEPAGE_CONFIG);
+  const [sizeTables, setSizeTables] = useState<SizeTable[]>(DEFAULT_SIZE_TABLES);
 
   useEffect(() => {
     setIsAuthenticated(localStorage.getItem(AUTH_KEY) === 'true');
@@ -39,6 +44,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       if (Object.keys(data).length > 0) setCollections(data);
     }).catch(() => { /* keep defaults */ });
     fetchHomepageConfig().then(data => setHomepageConfig(data)).catch(() => {});
+    fetchSizeTables().then(data => {
+      if (data.length > 0) setSizeTables(data);
+    }).catch(() => {});
   }, []);
 
   const login = (password: string) => {
@@ -88,6 +96,23 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     await upsertHomepageSectionAction(updated).catch(console.error);
   };
 
+  const addSizeTable = async (t: Omit<SizeTable, 'id'>) => {
+    const id = t.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `tabela-${Date.now()}`;
+    const full: SizeTable = { ...t, id };
+    setSizeTables(prev => [...prev, full]);
+    await upsertSizeTableAction(full).catch(console.error);
+  };
+
+  const updateSizeTable = async (id: string, t: SizeTable) => {
+    setSizeTables(prev => prev.map(x => x.id === id ? t : x));
+    await upsertSizeTableAction(t).catch(console.error);
+  };
+
+  const deleteSizeTable = async (id: string) => {
+    setSizeTables(prev => prev.filter(x => x.id !== id));
+    await deleteSizeTableAction(id).catch(console.error);
+  };
+
   const updateCollection = async (id: string, patch: Partial<Collection>) => {
     const existing = collections[id];
     if (!existing) return;
@@ -97,7 +122,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AdminContext.Provider value={{ isAuthenticated, login, logout, products, collections, addProduct, updateProduct, deleteProduct, updateCollection, homepageConfig, updateHomepageSection }}>
+    <AdminContext.Provider value={{ isAuthenticated, login, logout, products, collections, addProduct, updateProduct, deleteProduct, updateCollection, homepageConfig, updateHomepageSection, sizeTables, addSizeTable, updateSizeTable, deleteSizeTable }}>
       {children}
     </AdminContext.Provider>
   );
