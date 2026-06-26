@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Product, Collection, HOME_PRODUCTS, COLLECTIONS, fetchCatalog, fetchCollections, HomepageSection, HomepageSectionId, DEFAULT_HOMEPAGE_CONFIG, fetchHomepageConfig, SizeTable, DEFAULT_SIZE_TABLES, fetchSizeTables } from '@/lib/data';
-import { upsertProductAction, deleteProductAction, upsertCollectionAction, upsertHomepageSectionAction, upsertSizeTableAction, deleteSizeTableAction } from '@/app/actions/admin';
+import { Product, Collection, HOME_PRODUCTS, COLLECTIONS, fetchCatalog, fetchCollections, HomepageSection, HomepageSectionId, DEFAULT_HOMEPAGE_CONFIG, fetchHomepageConfig, SizeTable, DEFAULT_SIZE_TABLES, fetchSizeTables, PaymentConfig, DEFAULT_PAYMENT_CONFIG, fetchPaymentConfig } from '@/lib/data';
+import { upsertProductAction, deleteProductAction, upsertCollectionAction, upsertHomepageSectionAction, upsertSizeTableAction, deleteSizeTableAction, upsertPaymentConfigAction } from '@/app/actions/admin';
 
 const ADMIN_PASSWORD = 'pingo2024';
 const AUTH_KEY = 'pdl_admin_auth';
@@ -23,6 +23,8 @@ interface AdminContextType {
   addSizeTable: (t: Omit<SizeTable, 'id'>) => Promise<void>;
   updateSizeTable: (id: string, t: SizeTable) => Promise<void>;
   deleteSizeTable: (id: string) => Promise<void>;
+  paymentConfig: PaymentConfig;
+  updatePaymentConfig: (config: PaymentConfig) => Promise<void>;
 }
 
 const AdminContext = createContext<AdminContextType | null>(null);
@@ -33,6 +35,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [collections, setCollections] = useState<Record<string, Collection>>(COLLECTIONS);
   const [homepageConfig, setHomepageConfig] = useState<Record<HomepageSectionId, HomepageSection>>(DEFAULT_HOMEPAGE_CONFIG);
   const [sizeTables, setSizeTables] = useState<SizeTable[]>(DEFAULT_SIZE_TABLES);
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>(DEFAULT_PAYMENT_CONFIG);
 
   useEffect(() => {
     setIsAuthenticated(localStorage.getItem(AUTH_KEY) === 'true');
@@ -47,6 +50,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     fetchSizeTables().then(data => {
       if (data.length > 0) setSizeTables(data);
     }).catch(() => {});
+    fetchPaymentConfig().then(data => setPaymentConfig(data)).catch(() => {});
   }, []);
 
   const login = (password: string) => {
@@ -115,6 +119,11 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     await deleteSizeTableAction(id).catch(console.error);
   };
 
+  const updatePaymentConfig = async (config: PaymentConfig) => {
+    setPaymentConfig(config);
+    await upsertPaymentConfigAction(config).catch(console.error);
+  };
+
   const updateCollection = async (id: string, patch: Partial<Collection>) => {
     const existing = collections[id];
     if (!existing) return;
@@ -124,7 +133,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AdminContext.Provider value={{ isAuthenticated, login, logout, products, collections, addProduct, updateProduct, deleteProduct, updateCollection, homepageConfig, updateHomepageSection, sizeTables, addSizeTable, updateSizeTable, deleteSizeTable }}>
+    <AdminContext.Provider value={{ isAuthenticated, login, logout, products, collections, addProduct, updateProduct, deleteProduct, updateCollection, homepageConfig, updateHomepageSection, sizeTables, addSizeTable, updateSizeTable, deleteSizeTable, paymentConfig, updatePaymentConfig }}>
       {children}
     </AdminContext.Provider>
   );
