@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Logo from './Logo';
+import SearchBox from './SearchBox';
 import { IconMenu, IconBag, IconUser } from './Icons';
 import { useCart } from '@/context/CartContext';
 
@@ -20,10 +21,7 @@ export default function PdlHeader({ scrolled, onMenu }: PdlHeaderProps) {
         <IconMenu />
       </button>
       <Logo onClick={() => router.push('/')} />
-      <nav className="pdl-header-nav">
-        <a href="/genero/meninas">Meninas</a>
-        <a href="/genero/meninos">Meninos</a>
-      </nav>
+      <SearchBox variant="header" />
       <div className="pdl-header-icons" style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
         <button className="pdl-header-icon" onClick={() => router.push('/perfil')} aria-label="Perfil">
           <IconUser />

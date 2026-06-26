@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import Logo from './Logo';
+import SearchBox from './SearchBox';
 import { IconX, IconArrowRight } from './Icons';
 
 interface PdlDrawerProps {
@@ -32,6 +33,8 @@ export default function PdlDrawer({ open, onClose }: PdlDrawerProps) {
           <div className="eyebrow">olá, mãe</div>
           <h3>Que bom <em>te ver</em> por aqui.</h3>
         </div>
+
+        <SearchBox variant="drawer" onNavigate={onClose} />
 
         <div className="pdl-drawer-section">
           <h4>comprar</h4>

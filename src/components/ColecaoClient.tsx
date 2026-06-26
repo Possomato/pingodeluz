@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import PdlHeader from '@/components/PdlHeader';
 import PdlDrawer from '@/components/PdlDrawer';
 import PdlFooter from '@/components/PdlFooter';
 import PdlImg from '@/components/PdlImg';
@@ -24,6 +25,7 @@ export default function ColecaoClient({ c, filters }: { c: Collection; filters: 
 
   return (
     <div className="pdl-app">
+      <PdlHeader scrolled={scrolled} onMenu={() => setMenuOpen(true)} />
       <div className={`pdl-back-bar ${scrolled ? 'solid' : 'over-hero'}`} style={{ marginBottom: -54 }}>
         <button onClick={() => router.back()} aria-label="Voltar"><IconChevronLeft size={18} /></button>
         <span className="pdl-back-title">{c.name.join(' ')}</span>

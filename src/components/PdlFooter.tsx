@@ -1,9 +1,14 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+
 export default function PdlFooter() {
+  const router = useRouter();
+
   return (
     <div className="pdl-footer">
       <div className="pdl-foot-logo">
-        Pingo<br />
-        <em>de luz</em>
+        <img src="/logo-transparente.png" alt="Pingo de Luz" className="pdl-foot-logo-img" draggable={false} />
       </div>
       <div className="pdl-foot-sub">
         Roupas feitas com carinho<br />
@@ -14,17 +19,16 @@ export default function PdlFooter() {
         <div className="pdl-foot-col">
           <h4>Coleções</h4>
           <ul>
-            <li>Jardim Encantado</li>
-            <li>Doce Aventura</li>
+            <li onClick={() => router.push('/colecao/jardim')}>Jardim Encantado</li>
+            <li onClick={() => router.push('/colecao/doce')}>Doce Aventura</li>
             <li>Arquivo</li>
           </ul>
         </div>
         <div className="pdl-foot-col">
           <h4>Loja</h4>
           <ul>
-            <li>Meninas</li>
-            <li>Meninos</li>
-            <li>0–2 · 3–6 · 7–12</li>
+            <li onClick={() => router.push('/genero/meninas')}>Meninas</li>
+            <li onClick={() => router.push('/genero/meninos')}>Meninos</li>
           </ul>
         </div>
         <div className="pdl-foot-col">
@@ -40,7 +44,6 @@ export default function PdlFooter() {
           <ul>
             <li>Instagram</li>
             <li>Newsletter</li>
-            <li>Lojas físicas</li>
           </ul>
         </div>
       </div>
