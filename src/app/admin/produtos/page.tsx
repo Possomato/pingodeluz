@@ -35,16 +35,12 @@ export default function AdminProdutosPage() {
             <th>Nome</th>
             <th>Coleção</th>
             <th>Preço</th>
-            <th>Estoque total</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody>
           {products.map(p => {
-            const totalStock = p.stock
-              ? Object.values(p.stock).reduce((s, n) => s + n, 0)
-              : (p.sizes ? p.sizes.length - (p.unavail?.length ?? 0) : '—');
-            return (
+              return (
               <tr key={p.id}>
                 <td>
                   {p.imageUrl
@@ -55,7 +51,6 @@ export default function AdminProdutosPage() {
                 <td style={{ fontWeight: 500 }}>{p.name}</td>
                 <td style={{ color: '#888' }}>{p.col}</td>
                 <td>{p.price}</td>
-                <td>{totalStock}</td>
                 <td>
                   <div className="adm-actions">
                     <button className="adm-btn adm-btn-secondary adm-btn-sm" onClick={() => router.push(`/admin/produtos/${p.id}`)}>Editar</button>
