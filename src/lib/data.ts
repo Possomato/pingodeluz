@@ -430,7 +430,7 @@ export async function fetchPaymentConfig(): Promise<PaymentConfig> {
     return {
       maxParcelas: row.max_parcelas as number,
       parcelaMinima: row.parcela_minima as number,
-      juros: row.juros as 'sem' | number,
+      juros: row.juros === 'sem' ? 'sem' : parseFloat(row.juros),
     };
   } catch {
     return DEFAULT_PAYMENT_CONFIG;
