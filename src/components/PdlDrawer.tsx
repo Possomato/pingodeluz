@@ -23,7 +23,7 @@ export default function PdlDrawer({ open, onClose }: PdlDrawerProps) {
       <div className={`pdl-drawer-backdrop ${open ? 'open' : ''}`} onClick={onClose} />
       <div className={`pdl-drawer ${open ? 'open' : ''}`}>
         <div className="pdl-drawer-head">
-          <Logo size={18} />
+          <Logo />
           <button className="pdl-drawer-close" onClick={onClose} aria-label="Fechar menu">
             <IconX size={16} />
           </button>
