@@ -127,7 +127,6 @@ export default function ProdutoClient({
             </div>
 
             <div className="pdl-size-chart">
-              <div className="pdl-size-chart-note">toque no tamanho para ver suas medidas</div>
               <div className="pdl-size-chart-scroll">
                 {sizeTable ? (
                   <table className="pdl-size-table">
