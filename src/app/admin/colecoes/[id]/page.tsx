@@ -4,7 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useAdmin } from '@/context/AdminContext';
-import { uploadImageAction } from '@/app/actions/upload';
+import ImageCropUploader from '@/components/admin/ImageCropUploader';
 
 const TINTS = ['rose', 'ochre', 'sage', 'clay', 'moss', 'ink'];
 const TINT_COLORS: Record<string, string> = {
@@ -82,26 +82,11 @@ export default function EditColecaoPage() {
 
         <div className="adm-field">
           <label>Imagem hero</label>
-          {form.imageUrl && (
-            <img
-              src={form.imageUrl}
-              alt="preview"
-              width={160}
-              height={100}
-              style={{ objectFit: 'cover', borderRadius: 6, marginBottom: 8, display: 'block', border: '1px solid #e5e5e5' }}
-            />
-          )}
-          <input
-            type="file"
-            accept="image/*"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              const fd = new FormData();
-              fd.append('file', file);
-              const url = await uploadImageAction(fd);
-              set('imageUrl', url);
-            }}
+          <ImageCropUploader
+            aspect={7 / 9}
+            currentUrl={form.imageUrl ?? undefined}
+            onUpload={url => set('imageUrl', url)}
+            label="foto"
           />
           {form.imageUrl && (
             <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4, wordBreak: 'break-all' }}>
