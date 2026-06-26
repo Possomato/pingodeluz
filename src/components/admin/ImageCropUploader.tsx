@@ -35,6 +35,9 @@ export default function ImageCropUploader({ aspect, currentUrl, onUpload, label 
       fd.append('file', blob, 'image.jpg');
       const url = await uploadImageAction(fd);
       onUpload(url);
+    } catch (err) {
+      console.error('Upload failed', err);
+      alert('Erro ao enviar imagem. Tente novamente.');
     } finally {
       setUploading(false);
     }
