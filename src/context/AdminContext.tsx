@@ -72,7 +72,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     const slug = base || 'produto';
     const taken = products.some(x => x.id === slug);
     const id = taken ? `${slug}-${Date.now()}` : slug;
-    const newProduct: Product = { ...p, id };
+    const newProduct: Product = { ...p, id, imageUrl: p.imageUrls?.[0] ?? p.imageUrl };
     setProducts(prev => [...prev, newProduct]); // optimistic
     await upsertProductAction(newProduct).catch(console.error); // persist
     return id;
@@ -81,7 +81,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const updateProduct = async (id: string, patch: Partial<Product>) => {
     const existing = products.find(p => p.id === id);
     if (!existing) return;
-    const updated: Product = { ...existing, ...patch };
+    const merged = { ...existing, ...patch };
+    const updated: Product = { ...merged, imageUrl: merged.imageUrls?.[0] ?? merged.imageUrl };
     setProducts(prev => prev.map(p => p.id === id ? updated : p)); // optimistic
     await upsertProductAction(updated).catch(console.error); // persist
   };

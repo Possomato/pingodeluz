@@ -43,8 +43,8 @@ export default function AdminProdutosPage() {
               return (
               <tr key={p.id}>
                 <td>
-                  {p.imageUrl
-                    ? <img src={p.imageUrl} alt={p.name} width={80} height={107} className="adm-img-preview" />
+                  {(p.imageUrls?.[0] ?? p.imageUrl)
+                    ? <img src={p.imageUrls?.[0] ?? p.imageUrl} alt={p.name} width={80} height={107} className="adm-img-preview" />
                     : <PdlImg tint={p.tint} className="adm-img-swatch" style={{ aspectRatio: '3/4' }} />
                   }
                 </td>
