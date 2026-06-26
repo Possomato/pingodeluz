@@ -145,6 +145,32 @@ export const DEFAULT_SIZE_TABLES: SizeTable[] = [
   },
 ];
 
+export interface PaymentConfig {
+  maxParcelas: number;
+  parcelaMinima: number;
+  juros: 'sem' | number;
+}
+
+export const DEFAULT_PAYMENT_CONFIG: PaymentConfig = {
+  maxParcelas: 3,
+  parcelaMinima: 50,
+  juros: 'sem',
+};
+
+export function calcInstallments(price: string, config: PaymentConfig): string | null {
+  const value = parseFloat(price.replace(/[^\d,]/g, '').replace(',', '.'));
+  if (!value || value <= 0) return null;
+  for (let n = config.maxParcelas; n >= 2; n--) {
+    const parcela = value / n;
+    if (parcela >= config.parcelaMinima) {
+      const parcelaFmt = parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const jurosText = config.juros === 'sem' ? 'sem juros' : `${config.juros}% a.m.`;
+      return `em ${n}x de R$ ${parcelaFmt} ${jurosText}`;
+    }
+  }
+  return null;
+}
+
 export const TESTIMONIALS = [
   { q: 'A Manu vive nas roupas da Pingo. O tecido é macio de um jeito que parece carinho — e ela mesma escolhe o que vai vestir.', name: 'Marina Vasques', role: 'mãe da Manuela, 4' },
   { q: 'Comprei o primeiro macacão do Theo na coleção Doce Aventura. Hoje guardo ele numa caixa — vai virar herança do irmão.', name: 'Beatriz Andrade', role: 'mãe do Theo, 2' },
@@ -384,6 +410,32 @@ export async function fetchHomepageConfig(): Promise<Record<HomepageSectionId, H
   }
 }
 
+
+export async function fetchPaymentConfig(): Promise<PaymentConfig> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/payment_config?id=eq.default&select=*`,
+      {
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+        },
+        next: { revalidate: 60 },
+      }
+    );
+    if (!res.ok) return DEFAULT_PAYMENT_CONFIG;
+    const rows = await res.json();
+    if (!rows.length) return DEFAULT_PAYMENT_CONFIG;
+    const row = rows[0];
+    return {
+      maxParcelas: row.max_parcelas as number,
+      parcelaMinima: row.parcela_minima as number,
+      juros: row.juros as 'sem' | number,
+    };
+  } catch {
+    return DEFAULT_PAYMENT_CONFIG;
+  }
+}
 
 export async function fetchSizeTables(): Promise<SizeTable[]> {
   try {
