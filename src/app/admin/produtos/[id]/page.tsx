@@ -124,8 +124,8 @@ export function ProductForm({ initial, onSave }: {
         <select
           value={form.sizeTableId ?? ''}
           onChange={e => {
-            const tableId = e.target.value;
-            const table = sizeTables.find(t => t.id === tableId);
+            const tableId = e.target.value || undefined;
+            const table = tableId ? sizeTables.find(t => t.id === tableId) : undefined;
             set('sizeTableId', tableId);
             set('sizes', table?.rows.map(r => r.size) ?? []);
           }}
