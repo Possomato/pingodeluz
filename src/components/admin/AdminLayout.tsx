@@ -26,6 +26,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin/produtos" className={pathname.startsWith('/admin/produtos') ? 'active' : ''}>Produtos</Link>
           <Link href="/admin/colecoes" className={pathname.startsWith('/admin/colecoes') ? 'active' : ''}>Coleções</Link>
           <Link href="/admin/homepage" className={pathname.startsWith('/admin/homepage') ? 'active' : ''}>Homepage</Link>
+          <Link href="/admin/tabelas" className={pathname.startsWith('/admin/tabelas') ? 'active' : ''}>Tabelas</Link>
         </nav>
         <button className="adm-logout" onClick={() => { logout(); router.push('/admin/login'); }}>Sair</button>
       </header>
