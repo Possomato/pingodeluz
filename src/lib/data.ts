@@ -456,9 +456,9 @@ export async function fetchSizeTables(): Promise<SizeTable[]> {
         signal: AbortSignal.timeout(8000),
       }
     );
-    if (!res.ok) return DEFAULT_SIZE_TABLES;
+    if (!res.ok) return [];
     const rows = await res.json();
-    if (!rows.length) return DEFAULT_SIZE_TABLES;
+    if (!rows.length) return [];
     return rows.map((r: Record<string, unknown>) => ({
       id: r.id as string,
       name: r.name as string,
@@ -466,7 +466,7 @@ export async function fetchSizeTables(): Promise<SizeTable[]> {
       rows: r.rows as SizeTable['rows'],
     }));
   } catch {
-    return DEFAULT_SIZE_TABLES;
+    return [];
   }
 }
 
