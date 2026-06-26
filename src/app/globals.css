@@ -79,7 +79,9 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
   border-bottom: 1px solid transparent;
   transition: border-color 0.25s ease;
 }
-.pdl-logo { position: absolute; left: 50%; transform: translateX(-50%); }
+.pdl-header-left { flex: 1; display: flex; align-items: center; justify-content: flex-start; }
+.pdl-header-right { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
+.pdl-logo { display: inline-flex; align-items: center; cursor: pointer; user-select: none; }
 .pdl-header.solid { border-bottom-color: var(--border-soft); }
 .pdl-header-nav { display: none; }
 .pdl-header-icon { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; }
@@ -699,7 +701,8 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
   .pdl-header { padding: 0 32px; height: 56px; align-items: center; background: var(--cream); border-bottom: 1px solid var(--border-soft); position: sticky; top: 0; z-index: 30; overflow: visible; }
   .pdl-header.solid { background: var(--cream); }
   .pdl-header-menu { display: none; }
-  .pdl-logo { position: static; transform: none; }
+  .pdl-header-left { flex: unset; }
+  .pdl-header-right { flex: unset; }
   .pdl-header-nav { display: flex; gap: 4px; align-items: center; flex: 1; justify-content: center; }
   .pdl-header-nav a { font-size: 14px; font-weight: 600; letter-spacing: 0.04em; color: var(--ink-soft); padding: 8px 18px; border-radius: 999px; text-decoration: none; transition: background 0.15s, color 0.15s; }
   .pdl-header-nav a:hover { background: var(--cream-deep); color: var(--ink); }
