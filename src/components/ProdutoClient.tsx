@@ -37,7 +37,11 @@ export default function ProdutoClient({
   const [galleryIdx, setGalleryIdx] = useState(0);
   const [openAcc, setOpenAcc] = useState<string | null>('compo');
 
-  const sizes = p.sizes?.length ? p.sizes : SIZES_MENINAS;
+  const sizeOrder = sizeTable
+    ? sizeTable.rows.map(r => r.size)
+    : TABELA_MEDIDAS.map(r => r.manequim);
+  const rawSizes = p.sizes?.length ? p.sizes : SIZES_MENINAS;
+  const sizes = [...rawSizes].sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
   const imgs = p.imageUrls?.length ? p.imageUrls : (p.imageUrl ? [p.imageUrl] : []);
   const labels = p.galleryLabels?.length === imgs.length ? p.galleryLabels : imgs.map((_, i) => `foto ${i + 1}`);
   const nameParts = p.nameParts || [p.name, ''];
