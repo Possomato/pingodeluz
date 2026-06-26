@@ -2,7 +2,7 @@
 
 import { createServiceClient } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
-import type { Product, Collection, HomepageSection } from '@/lib/data';
+import type { Product, Collection, HomepageSection, SizeTable } from '@/lib/data';
 
 function productToRow(p: Product) {
   return {
@@ -21,6 +21,8 @@ function productToRow(p: Product) {
     gallery_labels: p.galleryLabels ?? [],
     image_url: p.imageUrl ?? null,
     gender: p.gender ?? null,
+    product_type: p.type ?? null,
+    size_table_id: p.sizeTableId ?? null,
   };
 }
 
@@ -66,4 +68,23 @@ export async function upsertHomepageSectionAction(section: HomepageSection) {
   });
   if (error) throw new Error(error.message);
   revalidatePath('/');
+}
+
+export async function upsertSizeTableAction(t: SizeTable) {
+  const supabase = createServiceClient();
+  const { error } = await supabase.from('size_tables').upsert({
+    id: t.id,
+    name: t.name,
+    columns: t.columns,
+    rows: t.rows,
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin/tabelas');
+}
+
+export async function deleteSizeTableAction(id: string) {
+  const supabase = createServiceClient();
+  const { error } = await supabase.from('size_tables').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin/tabelas');
 }
