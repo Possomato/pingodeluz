@@ -90,19 +90,17 @@ export function ProductForm({ initial, onSave }: {
         <div className="adm-gallery-grid">
           {(form.imageUrls ?? []).map((url, i) => (
             <div key={i} className="adm-gallery-item">
-              <img src={url} alt={`foto ${i + 1}`} style={{ width: 80, aspectRatio: '3/4', objectFit: 'cover', borderRadius: 3, display: 'block' }} />
+              <img src={url} alt={`foto ${i + 1}`} className="adm-gallery-thumb" />
               <button
                 type="button"
                 className="adm-gallery-remove"
-                onClick={() => {
-                  const imgs = (form.imageUrls ?? []).filter((_, j) => j !== i);
-                  set('imageUrls', imgs);
-                }}
+                onClick={() => set('imageUrls', (form.imageUrls ?? []).filter((_, j) => j !== i))}
               >×</button>
             </div>
           ))}
           <ImageCropUploader
             aspect={3 / 4}
+            addTile
             onUpload={url => set('imageUrls', [...(form.imageUrls ?? []), url])}
             label="foto"
           />

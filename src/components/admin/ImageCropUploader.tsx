@@ -9,9 +9,10 @@ interface Props {
   currentUrl?: string;
   onUpload: (url: string) => void;
   label?: string;
+  addTile?: boolean; // renders as a + tile (no preview/placeholder)
 }
 
-export default function ImageCropUploader({ aspect, currentUrl, onUpload, label = 'foto' }: Props) {
+export default function ImageCropUploader({ aspect, currentUrl, onUpload, label = 'foto', addTile = false }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pendingSrc, setPendingSrc] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -44,6 +45,26 @@ export default function ImageCropUploader({ aspect, currentUrl, onUpload, label 
   };
 
   const previewH = Math.round(120 / aspect);
+
+  if (addTile) {
+    return (
+      <>
+        {pendingSrc && (
+          <CropModal src={pendingSrc} aspect={aspect} onConfirm={handleConfirm} onCancel={() => setPendingSrc(null)} />
+        )}
+        <button
+          type="button"
+          className="adm-gallery-add-tile"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          style={{ aspectRatio: `1 / ${1 / aspect}` }}
+        >
+          {uploading ? <span className="adm-gallery-add-spinner" /> : <span className="adm-gallery-add-plus">+</span>}
+        </button>
+        <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
+      </>
+    );
+  }
 
   return (
     <>
