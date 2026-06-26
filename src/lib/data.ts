@@ -6,7 +6,6 @@ export interface Product {
   price: string;
   tint: string;
   label: string;
-  installments?: string;
   desc?: string;
   sizes?: string[];
   unavail?: string[];
@@ -39,8 +38,8 @@ export interface GenderData {
 }
 
 export const HOME_PRODUCTS: Product[] = [
-  { id: 'p1', name: 'Vestido Margarida', nameParts: ['Vestido', 'Margarida'], col: 'Jardim Encantado', price: 'R$ 189', tint: 'rose', label: 'foto · vestido florido em musselina', installments: 'em 3x de R$ 63 sem juros', desc: 'Vestido de musselina dupla com bordado de margaridas à mão na barra. Cintura solta, mangas bufantes e fita de seda nas costas.', sizes: ['1m', '3m', '6m', '9m', '1', '2', '4', '6', '8', '10', '12', '14'], unavail: ['8'], galleryLabels: ['frente', 'costas', 'bordado', 'detalhe da fita'] },
-  { id: 'p2', name: 'Macacão Explorador', nameParts: ['Macacão', 'Explorador'], col: 'Doce Aventura', price: 'R$ 159', tint: 'ochre', label: 'foto · macacão linho cru', installments: 'em 3x de R$ 53 sem juros', desc: 'Macacão de linho cru com bolsos chapados e botões de coco. Tecido envelhece com o uso — fica mais bonito a cada lavagem.', sizes: ['1', '2', '3', '4', '6', '8'], unavail: [], galleryLabels: ['frente', 'costas', 'bolso', 'detalhe botão'] },
+  { id: 'p1', name: 'Vestido Margarida', nameParts: ['Vestido', 'Margarida'], col: 'Jardim Encantado', price: 'R$ 189', tint: 'rose', label: 'foto · vestido florido em musselina', desc: 'Vestido de musselina dupla com bordado de margaridas à mão na barra. Cintura solta, mangas bufantes e fita de seda nas costas.', sizes: ['1m', '3m', '6m', '9m', '1', '2', '4', '6', '8', '10', '12', '14'], unavail: ['8'], galleryLabels: ['frente', 'costas', 'bordado', 'detalhe da fita'] },
+  { id: 'p2', name: 'Macacão Explorador', nameParts: ['Macacão', 'Explorador'], col: 'Doce Aventura', price: 'R$ 159', tint: 'ochre', label: 'foto · macacão linho cru', desc: 'Macacão de linho cru com bolsos chapados e botões de coco. Tecido envelhece com o uso — fica mais bonito a cada lavagem.', sizes: ['1', '2', '3', '4', '6', '8'], unavail: [], galleryLabels: ['frente', 'costas', 'bolso', 'detalhe botão'] },
   { id: 'p3', name: 'Camisa Borboleta', nameParts: ['Camisa', 'Borboleta'], col: 'Jardim Encantado', price: 'R$ 129', tint: 'sage', label: 'foto · camisa bordada', sizes: ['1m', '3m', '6m', '9m', '1', '2', '4', '6', '8', '10', '12', '14'] },
   { id: 'p4', name: 'Bermuda Cipó', nameParts: ['Bermuda', 'Cipó'], col: 'Doce Aventura', price: 'R$ 109', tint: 'moss', label: 'foto · bermuda algodão' },
   { id: 'p5', name: 'Conjunto Pétala', nameParts: ['Conjunto', 'Pétala'], col: 'Jardim Encantado', price: 'R$ 219', tint: 'clay', label: 'foto · conjunto blusa + saia', sizes: ['1m', '3m', '6m', '9m', '1', '2', '4', '6', '8', '10', '12', '14'] },
@@ -259,7 +258,6 @@ function rowToProduct(row: Record<string, unknown>): Product {
     price: row.price as string,
     tint: row.tint as string,
     label: row.label as string,
-    installments: row.installments as string | undefined,
     desc: row.description as string | undefined,
     sizes: row.sizes as string[] | undefined,
     unavail: row.unavail as string[] | undefined,

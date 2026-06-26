@@ -13,7 +13,6 @@ function productToRow(p: Product) {
     price: p.price,
     tint: p.tint,
     label: p.label ?? '',
-    installments: p.installments ?? null,
     description: p.desc ?? null,
     sizes: p.sizes ?? [],
     unavail: p.unavail ?? [],

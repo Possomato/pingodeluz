@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useAdmin } from '@/context/AdminContext';
 import { calcInstallments, PaymentConfig } from '@/lib/data';
@@ -11,6 +11,10 @@ export default function PagamentosPage() {
   const { paymentConfig, updatePaymentConfig } = useAdmin();
   const [form, setForm] = useState<PaymentConfig>(paymentConfig);
   const [toast, setToast] = useState(false);
+
+  useEffect(() => {
+    setForm(paymentConfig);
+  }, [paymentConfig]);
 
   const set = <K extends keyof PaymentConfig>(k: K, v: PaymentConfig[K]) =>
     setForm(f => ({ ...f, [k]: v }));
