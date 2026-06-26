@@ -6,13 +6,11 @@ import PdlHeader from '@/components/PdlHeader';
 import PdlDrawer from '@/components/PdlDrawer';
 import PdlFooter from '@/components/PdlFooter';
 import PdlImg from '@/components/PdlImg';
-import { IconChevronLeft, IconSearch, IconBag, IconChevronDown } from '@/components/Icons';
+import { IconChevronDown } from '@/components/Icons';
 import type { Collection } from '@/lib/data';
-import { useCart } from '@/context/CartContext';
 
 export default function ColecaoClient({ c, filters }: { c: Collection; filters: string[] }) {
   const router = useRouter();
-  const { cartCount } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [filter, setFilter] = useState('todas');
@@ -26,17 +24,6 @@ export default function ColecaoClient({ c, filters }: { c: Collection; filters: 
   return (
     <div className="pdl-app">
       <PdlHeader scrolled={scrolled} onMenu={() => setMenuOpen(true)} />
-      <div className={`pdl-back-bar ${scrolled ? 'solid' : 'over-hero'}`} style={{ marginBottom: -54 }}>
-        <button onClick={() => router.back()} aria-label="Voltar"><IconChevronLeft size={18} /></button>
-        <span className="pdl-back-title">{c.name.join(' ')}</span>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button aria-label="Buscar"><IconSearch size={16} /></button>
-          <button onClick={() => router.push('/carrinho')} aria-label="Sacola" style={{ position: 'relative' }}>
-            <IconBag size={16} />
-            {cartCount > 0 && <span className="pdl-bag-count">{cartCount}</span>}
-          </button>
-        </div>
-      </div>
 
       <div className="pdl-coll-hero pdl-colpage-hero">
         <PdlImg tint={c.tint} imageUrl={c.imageUrl} label={`editorial · ${c.name.join(' ').toLowerCase()}`} style={{ position: 'absolute', inset: 0 }} />

@@ -6,7 +6,6 @@ import PdlHeader from '@/components/PdlHeader';
 import PdlDrawer from '@/components/PdlDrawer';
 import PdlFooter from '@/components/PdlFooter';
 import PdlImg from '@/components/PdlImg';
-import { IconChevronLeft } from '@/components/Icons';
 import type { SearchResult } from '@/lib/search';
 
 interface Props {
@@ -28,11 +27,6 @@ export default function BuscaClient({ query, results }: Props) {
   return (
     <div className="pdl-app">
       <PdlHeader scrolled={scrolled} onMenu={() => setMenuOpen(true)} />
-      <div className="pdl-back-bar solid">
-        <button onClick={() => router.back()} aria-label="Voltar"><IconChevronLeft size={18} /></button>
-        <span className="pdl-back-title">busca</span>
-        <div />
-      </div>
 
       <div className="pdl-busca-head">
         <div className="pdl-eyebrow">{results.length} {results.length === 1 ? 'peça encontrada' : 'peças encontradas'}</div>
