@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PdlImg from '@/components/PdlImg';
-import { IconChevronLeft, IconBag, IconChevronDown, IconArrowRight } from '@/components/Icons';
+import PdlHeader from '@/components/PdlHeader';
+import PdlDrawer from '@/components/PdlDrawer';
+import { IconChevronDown, IconArrowRight } from '@/components/Icons';
 import { TABELA_MEDIDAS, SIZES_MENINAS, fetchCatalog, calcInstallments } from '@/lib/data';
 import type { Product, SizeTable, PaymentConfig } from '@/lib/data';
 import { useCart } from '@/context/CartContext';
@@ -23,7 +25,8 @@ export default function ProdutoClient({
 }) {
   const router = useRouter();
   const { addToCart, cartCount } = useCart();
-const [size, setSize] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [size, setSize] = useState<string | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
 
   useEffect(() => {
@@ -43,14 +46,7 @@ const [size, setSize] = useState<string | null>(null);
 
   return (
     <div className="pdl-app" style={{ paddingBottom: 0 }}>
-<div className="pdl-back-bar solid">
-        <button onClick={() => router.back()} aria-label="Voltar"><IconChevronLeft size={18} /></button>
-        <span className="pdl-back-title">{p.name}</span>
-        <button onClick={() => router.push('/carrinho')} aria-label="Sacola" style={{ position: 'relative' }}>
-          <IconBag size={16} />
-          {cartCount > 0 && <span className="pdl-bag-count">{cartCount}</span>}
-        </button>
-      </div>
+      <PdlHeader onMenu={() => setMenuOpen(true)} />
 
       <div className="pdl-prodpage-cols">
         <div>
@@ -257,6 +253,7 @@ const [size, setSize] = useState<string | null>(null);
           {size && <IconArrowRight size={12} />}
         </button>
       </div>
+      <PdlDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
     </div>
   );
 }
