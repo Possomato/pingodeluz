@@ -20,7 +20,19 @@ export default function SizeTableForm({ initial, onSave }: Props) {
   const addColumn = () => setForm(f => ({ ...f, columns: [...f.columns, ''] }));
 
   const renameColumn = (i: number, val: string) =>
-    setForm(f => ({ ...f, columns: f.columns.map((c, j) => j === i ? val : c) }));
+    setForm(f => {
+      const oldKey = f.columns[i];
+      return {
+        ...f,
+        columns: f.columns.map((c, j) => j === i ? val : c),
+        rows: f.rows.map(r => {
+          const v = { ...r.values };
+          v[val] = v[oldKey] ?? 0;
+          if (val !== oldKey) delete v[oldKey];
+          return { ...r, values: v };
+        }),
+      };
+    });
 
   const removeColumn = (i: number) =>
     setForm(f => ({

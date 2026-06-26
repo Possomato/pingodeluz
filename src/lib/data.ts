@@ -384,16 +384,6 @@ export async function fetchHomepageConfig(): Promise<Record<HomepageSectionId, H
   }
 }
 
-export function getSizeTables(): SizeTable[] {
-  if (typeof window === 'undefined') return DEFAULT_SIZE_TABLES;
-  try {
-    const saved = localStorage.getItem('pdl_size_tables');
-    const parsed = saved ? JSON.parse(saved) : [];
-    return parsed.length > 0 ? parsed : DEFAULT_SIZE_TABLES;
-  } catch {
-    return DEFAULT_SIZE_TABLES;
-  }
-}
 
 export async function fetchSizeTables(): Promise<SizeTable[]> {
   try {
