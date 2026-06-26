@@ -57,7 +57,6 @@ export default function ImageCropUploader({ aspect, currentUrl, onUpload, label 
           className="adm-gallery-add-tile"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          style={{ aspectRatio: `1 / ${1 / aspect}` }}
         >
           {uploading ? <span className="adm-gallery-add-spinner" /> : <span className="adm-gallery-add-plus">+</span>}
         </button>

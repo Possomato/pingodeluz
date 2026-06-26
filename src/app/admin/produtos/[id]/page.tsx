@@ -18,11 +18,15 @@ export function ProductForm({ initial, onSave }: {
   initial: Partial<Product>;
   onSave: (p: Partial<Product>) => void;
 }) {
+  const resolvedUrls = initial.imageUrls?.length
+    ? initial.imageUrls
+    : initial.imageUrl ? [initial.imageUrl] : [];
+
   const [form, setForm] = useState<Partial<Product>>({
     name: '', col: 'Jardim Encantado', gender: 'meninas', price: '',
     desc: '', tint: 'rose',
-    imageUrls: initial.imageUrls ?? (initial.imageUrl ? [initial.imageUrl] : []),
     ...initial,
+    imageUrls: resolvedUrls,
   });
   const { sizeTables } = useAdmin();
   const [toast, setToast] = useState(false);
@@ -90,7 +94,7 @@ export function ProductForm({ initial, onSave }: {
         <div className="adm-gallery-grid">
           {(form.imageUrls ?? []).map((url, i) => (
             <div key={i} className="adm-gallery-item">
-              <img src={url} alt={`foto ${i + 1}`} className="adm-gallery-thumb" />
+              <img src={url} alt={`foto ${i + 1}`} className="adm-gallery-thumb" style={{ width: 88, height: 117, objectFit: 'cover', borderRadius: 6, display: 'block', flexShrink: 0 }} />
               <button
                 type="button"
                 className="adm-gallery-remove"
