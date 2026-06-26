@@ -84,7 +84,8 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
 .pdl-logo { display: inline-flex; align-items: center; cursor: pointer; user-select: none; }
 .pdl-header.solid { border-bottom-color: var(--border-soft); }
 .pdl-header-nav { display: none; }
-.pdl-header-icon { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; }
+.pdl-header-icon { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; }
+.pdl-header-icon svg { width: 24px; height: 24px; }
 .pdl-bag-count {
   position: absolute; top: -2px; right: -4px;
   width: 14px; height: 14px; border-radius: 50%;
