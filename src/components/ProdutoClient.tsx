@@ -6,11 +6,18 @@ import PdlImg from '@/components/PdlImg';
 import PdlHeader from '@/components/PdlHeader';
 import PdlDrawer from '@/components/PdlDrawer';
 import { IconChevronLeft, IconBag, IconChevronDown, IconArrowRight } from '@/components/Icons';
-import type { Product, SizeTable } from '@/lib/data';
-import { TABELA_MEDIDAS, SIZES_MENINAS, fetchCatalog } from '@/lib/data';
+import { TABELA_MEDIDAS, SIZES_MENINAS, fetchCatalog, calcInstallments } from '@/lib/data';
+import type { Product, SizeTable, PaymentConfig } from '@/lib/data';
 import { useCart } from '@/context/CartContext';
 
-export default function ProdutoClient({ p, id, sizeTable }: { p: Product; id: string; sizeTable: SizeTable | null }) {
+export default function ProdutoClient({
+  p, id, sizeTable, paymentConfig,
+}: {
+  p: Product;
+  id: string;
+  sizeTable: SizeTable | null;
+  paymentConfig: PaymentConfig;
+}) {
   const router = useRouter();
   const { addToCart, cartCount } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -70,7 +77,7 @@ export default function ProdutoClient({ p, id, sizeTable }: { p: Product; id: st
             </div>
             <div className="pdl-prodpage-price">
               <span className="now">{p.price}</span>
-              {p.installments && <span className="installments">— {p.installments}</span>}
+              {(() => { const inst = calcInstallments(p.price, paymentConfig); return inst ? <span className="installments">— {inst}</span> : null; })()}
             </div>
             {p.desc && <div className="pdl-prodpage-desc">{p.desc}</div>}
 
