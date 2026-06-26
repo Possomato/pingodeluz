@@ -34,7 +34,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(HOME_PRODUCTS);
   const [collections, setCollections] = useState<Record<string, Collection>>(COLLECTIONS);
   const [homepageConfig, setHomepageConfig] = useState<Record<HomepageSectionId, HomepageSection>>(DEFAULT_HOMEPAGE_CONFIG);
-  const [sizeTables, setSizeTables] = useState<SizeTable[]>(DEFAULT_SIZE_TABLES);
+  const [sizeTables, setSizeTables] = useState<SizeTable[]>([]);
   const [paymentConfig, setPaymentConfig] = useState<PaymentConfig>(DEFAULT_PAYMENT_CONFIG);
 
   useEffect(() => {
@@ -47,9 +47,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       if (Object.keys(data).length > 0) setCollections(data);
     }).catch(() => { /* keep defaults */ });
     fetchHomepageConfig().then(data => setHomepageConfig(data)).catch(() => {});
-    fetchSizeTables().then(data => {
-      if (data.length > 0) setSizeTables(data);
-    }).catch(() => {});
+    fetchSizeTables().then(setSizeTables).catch(() => {});
     fetchPaymentConfig().then(data => setPaymentConfig(data)).catch(() => {});
   }, []);
 
