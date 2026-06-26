@@ -21,7 +21,7 @@ export function ProductForm({ initial, onSave }: {
 }) {
   const [form, setForm] = useState<Partial<Product>>({
     name: '', col: 'Jardim Encantado', gender: 'meninas', price: '',
-    installments: '', desc: '', imageUrl: '', tint: 'rose',
+    desc: '', imageUrl: '', tint: 'rose',
     ...initial,
   });
   const { sizeTables } = useAdmin();
@@ -75,15 +75,9 @@ export function ProductForm({ initial, onSave }: {
         </div>
       </div>
 
-      <div className="adm-form-row">
-        <div className="adm-field">
-          <label>Preço</label>
-          <input required value={form.price ?? ''} onChange={e => set('price', e.target.value)} placeholder="R$ 189" />
-        </div>
-        <div className="adm-field">
-          <label>Parcelamento</label>
-          <input value={form.installments ?? ''} onChange={e => set('installments', e.target.value)} placeholder="em 3x de R$ 63 sem juros" />
-        </div>
+      <div className="adm-field">
+        <label>Preço</label>
+        <input required value={form.price ?? ''} onChange={e => set('price', e.target.value)} placeholder="R$ 189" />
       </div>
 
       <div className="adm-field">
