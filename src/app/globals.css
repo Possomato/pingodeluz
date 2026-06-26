@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 :root {
-  --cream: #f5efe3;
-  --cream-warm: #faf6ec;
-  --cream-deep: #ede4d0;
+  --cream: #faf6f0;
+  --cream-warm: #fdfaf5;
+  --cream-deep: #f0e9da;
   --ink: #2a2419;
   --ink-soft: #4a3f30;
   --muted: #8a7a5c;
