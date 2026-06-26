@@ -191,8 +191,8 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
 
 /* product page */
 .pdl-prodpage-gallery { margin: 0; }
-.pdl-prodpage-gallery-img { display: flex; align-items: center; justify-content: center; min-height: 300px; }
-.pdl-prodpage-gallery-photo { width: 100%; max-height: 72vw; object-fit: contain; display: block; }
+.pdl-prodpage-gallery-img { display: flex; align-items: center; justify-content: center; }
+.pdl-prodpage-gallery-photo { width: 100%; max-height: 115vw; object-fit: contain; display: block; }
 .pdl-prodpage-gallery-strip { display: flex; gap: 6px; padding: 12px 20px 0; overflow-x: auto; scrollbar-width: none; }
 .pdl-prodpage-gallery-strip::-webkit-scrollbar { display: none; }
 .pdl-prodpage-thumb { flex: 0 0 64px; aspect-ratio: 3/4; border-radius: 2px; border: 1px solid transparent; cursor: pointer; }
