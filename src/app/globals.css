@@ -501,7 +501,7 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
 .adm-table td { padding: 12px 14px; font-size: 13px; color: #1a1a1a; border-bottom: 1px solid #f5f5f5; vertical-align: middle; }
 .adm-table tr:last-child td { border-bottom: none; }
 .adm-swatch { width: 28px; height: 28px; border-radius: 4px; display: inline-block; }
-.adm-table .adm-actions { display: flex; gap: 6px; }
+.adm-table .adm-actions { display: flex; flex-direction: column; gap: 5px; align-items: stretch; }
 
 /* Buttons */
 .adm-btn { padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; letter-spacing: .03em; cursor: pointer; border: none; }
