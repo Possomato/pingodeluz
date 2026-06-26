@@ -5,6 +5,7 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { useAdmin } from '@/context/AdminContext';
 import { uploadImageAction } from '@/app/actions/upload';
 import { HOMEPAGE_SECTION_IDS, HomepageSectionId } from '@/lib/data';
+import ImageCropUploader from '@/components/admin/ImageCropUploader';
 
 const SECTION_LABELS: Record<HomepageSectionId, string> = {
   meninas: 'Card · Meninas',
@@ -17,7 +18,6 @@ const SECTION_LABELS: Record<HomepageSectionId, string> = {
   instagram: 'No instagram',
 };
 
-const WITH_PHOTOS: HomepageSectionId[] = ['meninas', 'meninos', 'instagram'];
 
 export default function AdminHomepagePage() {
   const { homepageConfig, updateHomepageSection } = useAdmin();
@@ -59,7 +59,6 @@ export default function AdminHomepagePage() {
       <div className="adm-homepage-list">
         {HOMEPAGE_SECTION_IDS.map(id => {
           const section = homepageConfig[id];
-          const hasPhotos = WITH_PHOTOS.includes(id);
           const isInstagram = id === 'instagram';
 
           return (
@@ -67,7 +66,15 @@ export default function AdminHomepagePage() {
               <div className="adm-homepage-row-main">
                 <span className="adm-homepage-label">{SECTION_LABELS[id]}</span>
 
-                {hasPhotos && (
+                {(id === 'meninas' || id === 'meninos') && (
+                  <ImageCropUploader
+                    aspect={7 / 11}
+                    currentUrl={section.imageUrls[0]}
+                    onUpload={url => updateHomepageSection(id, { imageUrls: [url] })}
+                    label="foto"
+                  />
+                )}
+                {isInstagram && (
                   <div className="adm-homepage-photos">
                     {section.imageUrls.map((url, i) => (
                       <div key={i} className="adm-homepage-thumb-wrap">
@@ -79,19 +86,19 @@ export default function AdminHomepagePage() {
                         >×</button>
                       </div>
                     ))}
-                    {(!isInstagram || section.imageUrls.length < 6) && (
+                    {section.imageUrls.length < 6 && (
                       <>
                         <button
                           className="adm-homepage-upload-btn"
                           onClick={() => inputRefs.current[id]?.click()}
                         >
-                          {section.imageUrls.length === 0 ? '+ foto' : isInstagram ? '+ foto' : 'trocar'}
+                          {section.imageUrls.length === 0 ? '+ foto' : '+ foto'}
                         </button>
                         <input
                           ref={el => { inputRefs.current[id] = el; }}
                           type="file"
                           accept="image/*"
-                          multiple={isInstagram}
+                          multiple
                           style={{ display: 'none' }}
                           onChange={e => handleUpload(id, e.target.files)}
                         />
