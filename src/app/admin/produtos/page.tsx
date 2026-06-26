@@ -6,12 +6,18 @@ import { useAdmin } from '@/context/AdminContext';
 import PdlImg from '@/components/PdlImg';
 
 export default function AdminProdutosPage() {
-  const { products, deleteProduct } = useAdmin();
+  const { products, deleteProduct, addProduct } = useAdmin();
   const router = useRouter();
 
   const handleDelete = (id: string, name: string) => {
     if (!confirm(`Excluir "${name}"?`)) return;
     deleteProduct(id);
+  };
+
+  const handleClone = async (p: (typeof products)[0]) => {
+    const { id: _id, imageUrl: _img, imageUrls: _imgs, ...rest } = p;
+    const newId = await addProduct({ ...rest, imageUrls: [], imageUrl: undefined });
+    router.push(`/admin/produtos/${newId}`);
   };
 
   return (
@@ -53,6 +59,7 @@ export default function AdminProdutosPage() {
                 <td>
                   <div className="adm-actions">
                     <button className="adm-btn adm-btn-secondary adm-btn-sm" onClick={() => router.push(`/admin/produtos/${p.id}`)}>Editar</button>
+                    <button className="adm-btn adm-btn-secondary adm-btn-sm" onClick={() => handleClone(p)}>Clonar</button>
                     <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={() => handleDelete(p.id, p.name)}>Excluir</button>
                   </div>
                 </td>

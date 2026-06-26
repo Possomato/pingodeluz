@@ -13,7 +13,7 @@ interface AdminContextType {
   logout: () => void;
   products: Product[];
   collections: Record<string, Collection>;
-  addProduct: (p: Omit<Product, 'id'>) => Promise<void>;
+  addProduct: (p: Omit<Product, 'id'>) => Promise<string>;
   updateProduct: (id: string, p: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   updateCollection: (id: string, c: Partial<Collection>) => Promise<void>;
@@ -63,7 +63,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(false);
   };
 
-  const addProduct = async (p: Omit<Product, 'id'>) => {
+  const addProduct = async (p: Omit<Product, 'id'>): Promise<string> => {
     const base = (p.name ?? '')
       .toLowerCase()
       .normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -75,6 +75,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     const newProduct: Product = { ...p, id };
     setProducts(prev => [...prev, newProduct]); // optimistic
     await upsertProductAction(newProduct).catch(console.error); // persist
+    return id;
   };
 
   const updateProduct = async (id: string, patch: Partial<Product>) => {
