@@ -80,7 +80,7 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
   transition: border-color 0.25s ease;
 }
 .pdl-header-left { flex: 1; display: flex; align-items: center; justify-content: flex-start; }
-.pdl-header-right { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 14px; }
+.pdl-header-right { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 22px; }
 .pdl-logo { display: inline-flex; align-items: center; cursor: pointer; user-select: none; }
 .pdl-header.solid { border-bottom-color: var(--border-soft); }
 .pdl-header-nav { display: none; }
