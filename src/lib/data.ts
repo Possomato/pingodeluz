@@ -280,6 +280,7 @@ export async function fetchCatalog(): Promise<Product[]> {
           Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
         },
         next: { revalidate: 60 },
+        signal: AbortSignal.timeout(8000),
       }
     );
     if (!res.ok) return HOME_PRODUCTS;
@@ -299,6 +300,7 @@ export async function fetchCollections(): Promise<Record<string, Collection>> {
           Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
         },
         next: { revalidate: 60 },
+        signal: AbortSignal.timeout(8000),
       }),
       fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/products?select=*`, {
         headers: {
@@ -306,6 +308,7 @@ export async function fetchCollections(): Promise<Record<string, Collection>> {
           Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
         },
         next: { revalidate: 60 },
+        signal: AbortSignal.timeout(8000),
       }),
     ]);
     if (!colRes.ok || !prodRes.ok) return COLLECTIONS;
@@ -343,6 +346,7 @@ export async function fetchProductById(id: string): Promise<Product> {
           Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
         },
         next: { revalidate: 60 },
+        signal: AbortSignal.timeout(8000),
       }
     );
     if (!res.ok) return getProductById(id);
@@ -368,7 +372,7 @@ export async function fetchInstagramFeed(): Promise<InstagramPost[]> {
   try {
     const res = await fetch(
       `https://graph.instagram.com/me/media?fields=id,media_type,media_url,thumbnail_url,permalink&limit=6&access_token=${token}`,
-      { next: { revalidate: 3600 } }
+      { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) }
     );
     if (!res.ok) return [];
     const data = await res.json();
@@ -388,6 +392,7 @@ export async function fetchHomepageConfig(): Promise<Record<HomepageSectionId, H
           Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
         },
         next: { revalidate: 60 },
+        signal: AbortSignal.timeout(8000),
       }
     );
     if (!res.ok) return DEFAULT_HOMEPAGE_CONFIG;
@@ -419,6 +424,7 @@ export async function fetchPaymentConfig(): Promise<PaymentConfig> {
           Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
         },
         next: { revalidate: 60 },
+        signal: AbortSignal.timeout(8000),
       }
     );
     if (!res.ok) return DEFAULT_PAYMENT_CONFIG;
@@ -445,6 +451,7 @@ export async function fetchSizeTables(): Promise<SizeTable[]> {
           Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
         },
         next: { revalidate: 60 },
+        signal: AbortSignal.timeout(8000),
       }
     );
     if (!res.ok) return DEFAULT_SIZE_TABLES;
