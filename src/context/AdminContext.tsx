@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Product, Collection, HOME_PRODUCTS, COLLECTIONS, fetchCatalog, fetchCollections, HomepageSection, HomepageSectionId, DEFAULT_HOMEPAGE_CONFIG, fetchHomepageConfig, SizeTable, DEFAULT_SIZE_TABLES, fetchSizeTables, getSizeTables } from '@/lib/data';
+import { Product, Collection, HOME_PRODUCTS, COLLECTIONS, fetchCatalog, fetchCollections, HomepageSection, HomepageSectionId, DEFAULT_HOMEPAGE_CONFIG, fetchHomepageConfig, SizeTable, DEFAULT_SIZE_TABLES, fetchSizeTables } from '@/lib/data';
 import { upsertProductAction, deleteProductAction, upsertCollectionAction, upsertHomepageSectionAction, upsertSizeTableAction, deleteSizeTableAction } from '@/app/actions/admin';
 
 const ADMIN_PASSWORD = 'pingo2024';
@@ -97,7 +97,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   };
 
   const addSizeTable = async (t: Omit<SizeTable, 'id'>) => {
-    const id = t.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `tabela-${Date.now()}`;
+    const base = t.name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || '';
+    const taken = sizeTables.some(x => x.id === base);
+    const id = (!base || taken) ? `tabela-${Date.now()}` : base;
     const full: SizeTable = { ...t, id };
     setSizeTables(prev => [...prev, full]);
     await upsertSizeTableAction(full).catch(console.error);
