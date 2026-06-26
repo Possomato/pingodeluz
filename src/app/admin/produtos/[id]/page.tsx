@@ -20,7 +20,8 @@ export function ProductForm({ initial, onSave }: {
 }) {
   const [form, setForm] = useState<Partial<Product>>({
     name: '', col: 'Jardim Encantado', gender: 'meninas', price: '',
-    desc: '', imageUrl: '', tint: 'rose',
+    desc: '', tint: 'rose',
+    imageUrls: initial.imageUrls ?? (initial.imageUrl ? [initial.imageUrl] : []),
     ...initial,
   });
   const { sizeTables } = useAdmin();
@@ -85,25 +86,27 @@ export function ProductForm({ initial, onSave }: {
       </div>
 
       <div className="adm-field">
-        <label>Imagem do produto</label>
-        <ImageCropUploader
-          aspect={3 / 4}
-          currentUrl={form.imageUrl ?? undefined}
-          onUpload={url => set('imageUrl', url)}
-          label="foto"
-        />
-        <input
-          type="url"
-          placeholder="ou cole uma URL"
-          value={form.imageUrl ?? ''}
-          onChange={e => set('imageUrl', e.target.value)}
-          style={{ marginTop: 6 }}
-        />
-        {form.imageUrl && (
-          <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 4, wordBreak: 'break-all' }}>
-            {form.imageUrl}
-          </div>
-        )}
+        <label>Fotos do produto</label>
+        <div className="adm-gallery-grid">
+          {(form.imageUrls ?? []).map((url, i) => (
+            <div key={i} className="adm-gallery-item">
+              <img src={url} alt={`foto ${i + 1}`} style={{ width: 80, aspectRatio: '3/4', objectFit: 'cover', borderRadius: 3, display: 'block' }} />
+              <button
+                type="button"
+                className="adm-gallery-remove"
+                onClick={() => {
+                  const imgs = (form.imageUrls ?? []).filter((_, j) => j !== i);
+                  set('imageUrls', imgs);
+                }}
+              >×</button>
+            </div>
+          ))}
+          <ImageCropUploader
+            aspect={3 / 4}
+            onUpload={url => set('imageUrls', [...(form.imageUrls ?? []), url])}
+            label="foto"
+          />
+        </div>
       </div>
 
       <div className="adm-field">

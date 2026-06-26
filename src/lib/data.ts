@@ -11,7 +11,8 @@ export interface Product {
   unavail?: string[];
   stock?: Record<string, number>; // size → quantity; 0 = unavailable
   galleryLabels?: string[];
-  imageUrl?: string; // external photo URL (admin-set)
+  imageUrl?: string;
+  imageUrls?: string[];
   gender?: 'meninas' | 'meninos' | 'unissex';
   type?: string; // ex: vestido, macacão, camisa, bermuda…
   sizeTableId?: string;
@@ -264,6 +265,7 @@ function rowToProduct(row: Record<string, unknown>): Product {
     stock: row.stock as Record<string, number> | undefined,
     galleryLabels: row.gallery_labels as string[] | undefined,
     imageUrl: row.image_url as string | undefined,
+    imageUrls: (row.image_urls as string[] | undefined) ?? [],
     gender: row.gender as 'meninas' | 'meninos' | 'unissex' | undefined,
     type: (row.product_type ?? row.type) as string | undefined,
     sizeTableId: (row.size_table_id ?? row.sizeTableId) as string | undefined,

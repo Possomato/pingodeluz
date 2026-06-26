@@ -33,7 +33,8 @@ export default function ProdutoClient({
   const [openAcc, setOpenAcc] = useState<string | null>('compo');
 
   const sizes = p.sizes?.length ? p.sizes : SIZES_MENINAS;
-  const labels = p.galleryLabels || ['frente', 'costas', 'detalhe'];
+  const imgs = p.imageUrls?.length ? p.imageUrls : (p.imageUrl ? [p.imageUrl] : []);
+  const labels = p.galleryLabels?.length === imgs.length ? p.galleryLabels : imgs.map((_, i) => `foto ${i + 1}`);
   const nameParts = p.nameParts || [p.name, ''];
 
   const toggle = (k: string) => setOpenAcc(openAcc === k ? null : k);
@@ -53,7 +54,7 @@ export default function ProdutoClient({
       <div className="pdl-prodpage-cols">
         <div>
           <div className="pdl-prodpage-gallery">
-            <PdlImg tint={p.tint} imageUrl={p.imageUrl} label={`foto · ${p.name.toLowerCase()} · ${labels[galleryIdx]}`} />
+            <PdlImg tint={p.tint} imageUrl={imgs[galleryIdx] ?? p.imageUrl} label={`foto · ${p.name.toLowerCase()} · ${labels[galleryIdx]}`} />
             <div style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 5 }}>
               {labels.map((_, i) => (
                 <span key={i} style={{ width: i === galleryIdx ? 18 : 5, height: 5, borderRadius: 999, background: i === galleryIdx ? 'rgba(251,246,233,0.95)' : 'rgba(251,246,233,0.45)', transition: 'width .2s' }} />
@@ -63,7 +64,7 @@ export default function ProdutoClient({
           <div className="pdl-prodpage-gallery-strip">
             {labels.map((l, i) => (
               <div key={i} onClick={() => setGalleryIdx(i)} className={`pdl-prodpage-thumb ${i === galleryIdx ? 'active' : ''}`}>
-                <PdlImg tint={p.tint} imageUrl={p.imageUrl} ratio="3/4" />
+                <PdlImg tint={p.tint} imageUrl={imgs[i] ?? p.imageUrl} ratio="3/4" />
               </div>
             ))}
           </div>
