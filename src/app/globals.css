@@ -520,6 +520,8 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
 .adm-field input, .adm-field textarea, .adm-field select { padding: 9px 12px; border: 1px solid #e5e5e5; border-radius: 6px; font-size: 13px; font-family: var(--sans); color: #1a1a1a; background: #fafafa; width: 100%; box-sizing: border-box; }
 .adm-field input:focus, .adm-field textarea:focus, .adm-field select:focus { outline: none; border-color: #2e7d5e; background: #fff; }
 .adm-field textarea { resize: vertical; min-height: 80px; }
+.adm-field--error input, .adm-field--error textarea, .adm-field--error select { border-color: #c0392b; background: #fff8f8; }
+.adm-field-error { font-size: 11px; color: #c0392b; letter-spacing: 0.01em; }
 .adm-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .adm-form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
 .adm-form-actions { display: flex; gap: 10px; padding-top: 8px; }
