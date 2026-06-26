@@ -80,6 +80,7 @@ export async function upsertSizeTableAction(t: SizeTable) {
   });
   if (error) throw new Error(error.message);
   revalidatePath('/admin/tabelas');
+  revalidatePath('/produto/[id]', 'page');
 }
 
 export async function deleteSizeTableAction(id: string) {
@@ -87,4 +88,5 @@ export async function deleteSizeTableAction(id: string) {
   const { error } = await supabase.from('size_tables').delete().eq('id', id);
   if (error) throw new Error(error.message);
   revalidatePath('/admin/tabelas');
+  revalidatePath('/produto/[id]', 'page');
 }
