@@ -2,7 +2,7 @@
 
 import { createServiceClient } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
-import type { Product, Collection, HomepageSection, SizeTable } from '@/lib/data';
+import type { Product, Collection, HomepageSection, SizeTable, PaymentConfig } from '@/lib/data';
 
 function productToRow(p: Product) {
   return {
@@ -88,5 +88,18 @@ export async function deleteSizeTableAction(id: string) {
   const { error } = await supabase.from('size_tables').delete().eq('id', id);
   if (error) throw new Error(error.message);
   revalidatePath('/admin/tabelas');
+  revalidatePath('/produto/[id]', 'page');
+}
+
+export async function upsertPaymentConfigAction(config: PaymentConfig) {
+  const supabase = createServiceClient();
+  const { error } = await supabase.from('payment_config').upsert({
+    id: 'default',
+    max_parcelas: config.maxParcelas,
+    parcela_minima: config.parcelaMinima,
+    juros: config.juros === 'sem' ? 'sem' : String(config.juros),
+  });
+  if (error) throw new Error(error.message);
+  revalidatePath('/admin/pagamentos');
   revalidatePath('/produto/[id]', 'page');
 }
