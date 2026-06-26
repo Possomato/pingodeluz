@@ -4,9 +4,8 @@ import { useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useAdmin } from '@/context/AdminContext';
-import PdlImg from '@/components/PdlImg';
 import { Product } from '@/lib/data';
-import { uploadImageAction } from '@/app/actions/upload';
+import ImageCropUploader from '@/components/admin/ImageCropUploader';
 
 const TINTS = ['rose', 'ochre', 'sage', 'clay', 'moss', 'ink'];
 const TIPOS = ['vestido', 'macacão', 'camisa', 'blusa', 'bermuda', 'calça', 'conjunto', 'saia', 'suéter', 'camiseta', 'camisola', 'body', 'outro'];
@@ -87,29 +86,11 @@ export function ProductForm({ initial, onSave }: {
 
       <div className="adm-field">
         <label>Imagem do produto</label>
-        {form.imageUrl && (
-          <img
-            src={form.imageUrl}
-            alt="preview"
-            width={120}
-            height={160}
-            style={{ objectFit: 'cover', borderRadius: 4, marginBottom: 8, display: 'block' }}
-          />
-        )}
-        {!form.imageUrl && (
-          <PdlImg tint={form.tint ?? 'rose'} style={{ width: 120, height: 160, flexShrink: 0, borderRadius: 4, marginBottom: 8, display: 'block' }} />
-        )}
-        <input
-          type="file"
-          accept="image/*"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const fd = new FormData();
-            fd.append('file', file);
-            const url = await uploadImageAction(fd);
-            set('imageUrl', url);
-          }}
+        <ImageCropUploader
+          aspect={3 / 4}
+          currentUrl={form.imageUrl ?? undefined}
+          onUpload={url => set('imageUrl', url)}
+          label="foto"
         />
         <input
           type="url"
