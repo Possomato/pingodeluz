@@ -92,7 +92,7 @@ export default function AdminHomepagePage() {
                           className="adm-homepage-upload-btn"
                           onClick={() => inputRefs.current[id]?.click()}
                         >
-                          {section.imageUrls.length === 0 ? '+ foto' : '+ foto'}
+                          + foto
                         </button>
                         <input
                           ref={el => { inputRefs.current[id] = el; }}
