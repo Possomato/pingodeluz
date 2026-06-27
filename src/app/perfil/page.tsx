@@ -90,14 +90,14 @@ function PerfilContent() {
         </div>
 
         <div className="pdl-login">
-          <div className="pdl-login-logo" style={{ maxWidth: '200px', width: '100%', height: 'auto' }}>
+          <div style={{ maxWidth: '200px', margin: '0 auto 6px', width: '100%' }}>
             <Image
               src="/logo-transparente.png"
               alt="Pingo de Luz"
               width={200}
               height={100}
               priority
-              style={{ width: '100%', height: 'auto' }}
+              style={{ width: '100%', height: 'auto', display: 'block' }}
             />
           </div>
 
