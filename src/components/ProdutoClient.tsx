@@ -5,14 +5,15 @@ import { useRouter } from 'next/navigation';
 import PdlImg from '@/components/PdlImg';
 import PdlHeader from '@/components/PdlHeader';
 import PdlDrawer from '@/components/PdlDrawer';
+import PdlFooter from '@/components/PdlFooter';
 import { IconChevronDown, IconArrowRight } from '@/components/Icons';
 import { TABELA_MEDIDAS, SIZES_MENINAS, fetchCatalog, calcInstallments } from '@/lib/data';
 import type { Product, SizeTable, PaymentConfig } from '@/lib/data';
 import { useCart } from '@/context/CartContext';
 
-const TINT_BG: Record<string, string> = {
-  rose: '#e8d7c8', sage: '#c8d2bf', ochre: '#d9c19a',
-  clay: '#d6b89e', moss: '#b6c0a3', ink: '#4a3f30',
+const COL_SLUG: Record<string, string> = {
+  'Jardim Encantado': 'jardim',
+  'Doce Aventura': 'doce',
 };
 
 export default function ProdutoClient({
@@ -24,67 +25,128 @@ export default function ProdutoClient({
   paymentConfig: PaymentConfig;
 }) {
   const router = useRouter();
-  const { addToCart, cartCount } = useCart();
+  const { addToCart } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [size, setSize] = useState<string | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
-
-  useEffect(() => {
-    fetchCatalog().then(all => {
-      setRelated(all.filter(r => r.id !== id).slice(0, 3));
-    }).catch(() => {});
-  }, [id]);
   const [galleryIdx, setGalleryIdx] = useState(0);
-  const [openAcc, setOpenAcc] = useState<string | null>('compo');
+  const [openAcc, setOpenAcc] = useState<string | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [relIdx, setRelIdx] = useState(0);
+  const [isDesktop, setIsDesktop] = useState(false);
 
-  const sizeOrder = sizeTable
-    ? sizeTable.rows.map(r => r.size)
-    : TABELA_MEDIDAS.map(r => r.manequim);
-  const rawSizes = p.sizes?.length ? p.sizes : SIZES_MENINAS;
-  const sizes = [...rawSizes].sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
   const imgs = p.imageUrls?.length ? p.imageUrls : (p.imageUrl ? [p.imageUrl] : []);
   const labels = p.galleryLabels?.length === imgs.length ? p.galleryLabels : imgs.map((_, i) => `foto ${i + 1}`);
   const nameParts = p.nameParts || [p.name, ''];
+  const sizeOrder = sizeTable ? sizeTable.rows.map(r => r.size) : TABELA_MEDIDAS.map(r => r.manequim);
+  const rawSizes = p.sizes?.length ? p.sizes : SIZES_MENINAS;
+  const sizes = [...rawSizes].sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
+  const colSlug = COL_SLUG[p.col] ?? p.col.toLowerCase().split(' ')[0];
+
+  useEffect(() => {
+    fetchCatalog().then(all => {
+      setRelated(all.filter(r => r.id !== id).slice(0, 4));
+    }).catch(() => {});
+  }, [id]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const len = imgs.length;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxOpen(false);
+      if (e.key === 'ArrowRight') setGalleryIdx(i => Math.min(i + 1, len - 1));
+      if (e.key === 'ArrowLeft') setGalleryIdx(i => Math.max(i - 1, 0));
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [lightboxOpen, imgs.length]);
 
   const toggle = (k: string) => setOpenAcc(openAcc === k ? null : k);
+
+  const handleBuy = () => {
+    if (!size) return;
+    addToCart({ pid: id, id, name: p.name, col: p.col, price: p.price, tint: p.tint, size });
+    router.push('/carrinho');
+  };
 
   return (
     <div className="pdl-app" style={{ paddingBottom: 0 }}>
       <PdlHeader onMenu={() => setMenuOpen(true)} />
 
+      {/* Breadcrumb */}
+      <nav className="pdl-breadcrumb">
+        <span className="pdl-breadcrumb-link" onClick={() => router.push('/')}>Pingo de Luz</span>
+        <span className="pdl-breadcrumb-sep">›</span>
+        <span className="pdl-breadcrumb-link" onClick={() => router.push(`/colecao/${colSlug}`)}>{p.col}</span>
+        <span className="pdl-breadcrumb-sep">›</span>
+        <span className="pdl-breadcrumb-current">{p.name}</span>
+      </nav>
+
       <div className="pdl-prodpage-cols">
+        {/* Gallery column */}
         <div>
-          <div className="pdl-prodpage-gallery">
-            <div className="pdl-prodpage-gallery-img">
-              {(imgs[galleryIdx] ?? p.imageUrl) && (
-                <img
-                  src={imgs[galleryIdx] ?? p.imageUrl}
-                  alt={`${p.name} · ${labels[galleryIdx]}`}
-                  className="pdl-prodpage-gallery-photo"
-                />
-              )}
-            </div>
+          <div className="pdl-prodpage-gallery-wrap">
+            {/* Vertical thumbnails — desktop only via CSS */}
             {imgs.length > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 5, padding: '8px 0 0' }}>
-                {imgs.map((_, i) => (
-                  <span
+              <div className="pdl-prodpage-gallery-strip">
+                {labels.map((_, i) => (
+                  <div
                     key={i}
                     onClick={() => setGalleryIdx(i)}
-                    style={{ width: i === galleryIdx ? 18 : 5, height: 5, borderRadius: 999, background: i === galleryIdx ? 'var(--ink)' : 'var(--border)', transition: 'width .2s', cursor: 'pointer', display: 'block' }}
-                  />
+                    className={`pdl-prodpage-thumb ${i === galleryIdx ? 'active' : ''}`}
+                  >
+                    <PdlImg tint={p.tint} imageUrl={imgs[i] ?? p.imageUrl} ratio="3/4" />
+                  </div>
                 ))}
               </div>
             )}
-          </div>
-          <div className="pdl-prodpage-gallery-strip">
-            {labels.map((l, i) => (
-              <div key={i} onClick={() => setGalleryIdx(i)} className={`pdl-prodpage-thumb ${i === galleryIdx ? 'active' : ''}`}>
-                <PdlImg tint={p.tint} imageUrl={imgs[i] ?? p.imageUrl} ratio="3/4" />
+
+            {/* Hero + dots */}
+            <div className="pdl-prodpage-gallery-main">
+              <div
+                className="pdl-prodpage-gallery-img pdl-prodpage-gallery-clickable"
+                onClick={() => isDesktop && setLightboxOpen(true)}
+              >
+                {(imgs[galleryIdx] ?? p.imageUrl) && (
+                  <img
+                    src={imgs[galleryIdx] ?? p.imageUrl}
+                    alt={`${p.name} · ${labels[galleryIdx]}`}
+                    className="pdl-prodpage-gallery-photo"
+                  />
+                )}
               </div>
-            ))}
+              {imgs.length > 1 && (
+                <div className="pdl-prodpage-dots">
+                  {imgs.map((_, i) => (
+                    <span
+                      key={i}
+                      onClick={() => setGalleryIdx(i)}
+                      style={{
+                        width: i === galleryIdx ? 18 : 5,
+                        height: 5,
+                        borderRadius: 999,
+                        background: i === galleryIdx ? 'var(--ink)' : 'var(--border)',
+                        transition: 'width .2s',
+                        cursor: 'pointer',
+                        display: 'block',
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
+        {/* Info column */}
         <div className="pdl-prodpage-right">
           <div className="pdl-prodpage-info">
             <div className="pdl-prodpage-eyebrow">{p.col}</div>
@@ -93,10 +155,13 @@ export default function ProdutoClient({
             </div>
             <div className="pdl-prodpage-price">
               <span className="now">{p.price}</span>
-              {(() => { const inst = calcInstallments(p.price, paymentConfig); return inst ? <span className="installments">— {inst}</span> : null; })()}
+              {(() => {
+                const inst = calcInstallments(p.price, paymentConfig);
+                return inst ? <span className="installments">— {inst}</span> : null;
+              })()}
             </div>
-            {p.desc && <div className="pdl-prodpage-desc">{p.desc}</div>}
 
+            {/* Size selector */}
             <div className="pdl-prodpage-section">
               <h4><span>tamanho</span></h4>
               <div className="pdl-prodpage-sizes">
@@ -112,68 +177,22 @@ export default function ProdutoClient({
               </div>
             </div>
 
+            {/* CTA — desktop (immediately after sizes) */}
             <div className="pdl-prodpage-cta-desktop" style={{ marginTop: 16 }}>
               <button
-                onClick={() => {
-                  if (!size) return;
-                  addToCart({ pid: id, id, name: p.name, col: p.col, price: p.price, tint: p.tint, size });
-                  router.push('/carrinho');
-                }}
-                style={size ? { width: '100%', padding: '14px 20px', background: 'var(--ink)', color: 'var(--cream-warm)', borderRadius: 999, fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 13, letterSpacing: '0.04em', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 } : { width: '100%', padding: '14px 20px', background: 'var(--border)', color: 'var(--muted)', borderRadius: 999, fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 13 }}
+                className={`pdl-cta-btn${size ? ' active' : ''}`}
+                onClick={handleBuy}
+                disabled={!size}
               >
-                {size ? `adicionar à sacola · tam ${size}` : 'escolha um tamanho'}
+                {size ? `Comprar · Tam. ${size}` : 'escolha um tamanho'}
                 {size && <IconArrowRight size={12} />}
               </button>
             </div>
 
-            <div className="pdl-size-chart">
-              <div className="pdl-size-chart-scroll">
-                {sizeTable ? (
-                  <table className="pdl-size-table">
-                    <thead>
-                      <tr>
-                        <th>tam.</th>
-                        {sizeTable.columns.map(col => <th key={col}>{col}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sizeTable.rows.filter(row => sizes.includes(row.size)).map(row => (
-                        <tr
-                          key={row.size}
-                          className={`pdl-size-table-row ${size === row.size ? 'active' : ''}`}
-                          onClick={() => setSize(row.size)}
-                        >
-                          <td className="pdl-size-table-maneq">{row.size}</td>
-                          {sizeTable.columns.map(col => <td key={col}>{row.values[col] ?? '—'}</td>)}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <table className="pdl-size-table">
-                    <thead>
-                      <tr><th>tam.</th><th>tórax</th><th>cintura</th><th>compr.</th></tr>
-                    </thead>
-                    <tbody>
-                      {TABELA_MEDIDAS.filter(row => sizes.includes(row.manequim)).map(row => (
-                        <tr
-                          key={row.manequim}
-                          className={`pdl-size-table-row ${size === row.manequim ? 'active' : ''}`}
-                          onClick={() => setSize(row.manequim)}
-                        >
-                          <td className="pdl-size-table-maneq">{row.manequim}</td>
-                          <td>{row.torax}</td>
-                          <td>{row.cintura}</td>
-                          <td>{row.comprimento}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-              <div className="pdl-size-chart-caption">medidas em centímetros · corpo da criança</div>
-            </div>
+            {/* Description */}
+            {p.desc && <div className="pdl-prodpage-desc" style={{ marginTop: 24 }}>{p.desc}</div>}
 
+            {/* Accordions */}
             <div className="pdl-prodpage-section">
               <h4><span>detalhes</span></h4>
               <div className="pdl-acc">
@@ -210,8 +229,66 @@ export default function ProdutoClient({
                   </div>
                 )}
               </div>
+              <div className="pdl-acc">
+                <div className="pdl-acc-head" onClick={() => toggle('medidas')}>
+                  <span>Medidas</span>
+                  <IconChevronDown size={14} />
+                </div>
+                {openAcc === 'medidas' && (
+                  <div className="pdl-acc-body" style={{ paddingTop: 12 }}>
+                    <div className="pdl-size-chart">
+                      <div className="pdl-size-chart-scroll">
+                        {sizeTable ? (
+                          <table className="pdl-size-table">
+                            <thead>
+                              <tr>
+                                <th>tam.</th>
+                                {sizeTable.columns.map(col => <th key={col}>{col}</th>)}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sizeTable.rows.filter(row => sizes.includes(row.size)).map(row => (
+                                <tr
+                                  key={row.size}
+                                  className={`pdl-size-table-row ${size === row.size ? 'active' : ''}`}
+                                  onClick={() => setSize(row.size)}
+                                >
+                                  <td className="pdl-size-table-maneq">{row.size}</td>
+                                  {sizeTable.columns.map(col => <td key={col}>{row.values[col] ?? '—'}</td>)}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <table className="pdl-size-table">
+                            <thead>
+                              <tr><th>tam.</th><th>tórax</th><th>cintura</th><th>compr.</th></tr>
+                            </thead>
+                            <tbody>
+                              {TABELA_MEDIDAS.filter(row => sizes.includes(row.manequim)).map(row => (
+                                <tr
+                                  key={row.manequim}
+                                  className={`pdl-size-table-row ${size === row.manequim ? 'active' : ''}`}
+                                  onClick={() => setSize(row.manequim)}
+                                >
+                                  <td className="pdl-size-table-maneq">{row.manequim}</td>
+                                  <td>{row.torax}</td>
+                                  <td>{row.cintura}</td>
+                                  <td>{row.comprimento}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                      <div className="pdl-size-chart-caption">medidas em centímetros · corpo da criança</div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
+            {/* Histórias da coleção */}
             <div style={{ marginTop: 36, padding: '28px 0', borderTop: '1px solid var(--border-soft)', borderBottom: '1px solid var(--border-soft)' }}>
               <div className="pdl-eyebrow" style={{ marginBottom: 10 }}>histórias da coleção</div>
               <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 16, lineHeight: 1.4, color: 'var(--ink-soft)' }}>
@@ -222,40 +299,97 @@ export default function ProdutoClient({
               </div>
             </div>
           </div>
-
         </div>
       </div>
 
+      {/* Combina com */}
       {related.length > 0 && (
         <div style={{ marginTop: 36, padding: '0 0 36px' }}>
           <div className="pdl-eyebrow" style={{ marginBottom: 14 }}>combina com</div>
-          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none' }}>
-            {related.map(rp => (
-              <div key={rp.id} style={{ flex: '0 0 48%' }} onClick={() => router.push(`/produto/${rp.id}`)}>
-                <PdlImg tint={rp.tint} imageUrl={rp.imageUrl} style={{ aspectRatio: '3/4', borderRadius: 3, marginBottom: 8 }} />
-                <div style={{ fontFamily: 'var(--editorial)', fontSize: 13, color: 'var(--ink)' }}>{rp.name}</div>
-                <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>{rp.price?.startsWith('R$') ? rp.price : `R$ ${rp.price}`}</div>
+          {isDesktop ? (
+            <div className="pdl-related-desktop">
+              <button
+                className="pdl-related-nav"
+                onClick={() => setRelIdx(i => Math.max(0, i - 1))}
+                disabled={relIdx === 0}
+                aria-label="Anterior"
+              >‹</button>
+              <div style={{ display: 'flex', gap: 16, flex: 1, overflow: 'hidden' }}>
+                {related.slice(relIdx, relIdx + 2).map(rp => (
+                  <div
+                    key={rp.id}
+                    style={{ flex: '0 0 calc(50% - 8px)', cursor: 'pointer' }}
+                    onClick={() => router.push(`/produto/${rp.id}`)}
+                  >
+                    <PdlImg tint={rp.tint} imageUrl={rp.imageUrl} style={{ aspectRatio: '3/4', borderRadius: 3, marginBottom: 8 }} />
+                    <div style={{ fontFamily: 'var(--editorial)', fontSize: 13, color: 'var(--ink)' }}>{rp.name}</div>
+                    <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>{rp.price?.startsWith('R$') ? rp.price : `R$ ${rp.price}`}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+              <button
+                className="pdl-related-nav"
+                onClick={() => setRelIdx(i => Math.min(related.length - 2, i + 1))}
+                disabled={relIdx >= related.length - 2}
+                aria-label="Próximo"
+              >›</button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 10, overflowX: 'auto', scrollbarWidth: 'none' }}>
+              {related.map(rp => (
+                <div key={rp.id} style={{ flex: '0 0 48%' }} onClick={() => router.push(`/produto/${rp.id}`)}>
+                  <PdlImg tint={rp.tint} imageUrl={rp.imageUrl} style={{ aspectRatio: '3/4', borderRadius: 3, marginBottom: 8 }} />
+                  <div style={{ fontFamily: 'var(--editorial)', fontSize: 13, color: 'var(--ink)' }}>{rp.name}</div>
+                  <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>{rp.price?.startsWith('R$') ? rp.price : `R$ ${rp.price}`}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       <div style={{ height: 100 }} />
 
-<div className="pdl-prodpage-cta">
+      {/* Sticky mobile CTA */}
+      <div className="pdl-prodpage-cta">
         <button
-          onClick={() => {
-            if (!size) return;
-            addToCart({ pid: id, id, name: p.name, col: p.col, price: p.price, tint: p.tint, size });
-            router.push('/carrinho');
-          }}
-          style={size ? {} : { background: 'var(--border)', color: 'var(--muted)' }}
+          className={`pdl-cta-btn${size ? ' active' : ''}`}
+          onClick={handleBuy}
+          disabled={!size}
         >
-          {size ? `adicionar à sacola · tam ${size}` : 'escolha um tamanho'}
+          {size ? `Comprar · Tam. ${size}` : 'escolha um tamanho'}
           {size && <IconArrowRight size={12} />}
         </button>
       </div>
+
+      {/* Lightbox — desktop only */}
+      {lightboxOpen && (
+        <div className="pdl-lightbox-backdrop" onClick={() => setLightboxOpen(false)}>
+          <button className="pdl-lightbox-close" onClick={() => setLightboxOpen(false)}>×</button>
+          {galleryIdx > 0 && (
+            <button
+              className="pdl-lightbox-nav left"
+              onClick={e => { e.stopPropagation(); setGalleryIdx(i => i - 1); }}
+              aria-label="Foto anterior"
+            >‹</button>
+          )}
+          <img
+            src={imgs[galleryIdx]}
+            alt={`${p.name} · ${labels[galleryIdx]}`}
+            className="pdl-lightbox-img"
+            onClick={e => e.stopPropagation()}
+          />
+          {galleryIdx < imgs.length - 1 && (
+            <button
+              className="pdl-lightbox-nav right"
+              onClick={e => { e.stopPropagation(); setGalleryIdx(i => i + 1); }}
+              aria-label="Próxima foto"
+            >›</button>
+          )}
+        </div>
+      )}
+
+      <PdlFooter />
       <PdlDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
     </div>
   );
