@@ -134,7 +134,7 @@ function PerfilContent() {
   return (
     <div className="pdl-app">
       <div className={`pdl-back-bar ${scrolled ? 'solid' : ''}`}>
-        <button onClick={() => router.back()} aria-label="Voltar"><IconChevronLeft size={18} /></button>
+        <button onClick={() => router.push('/')} aria-label="Voltar"><IconChevronLeft size={18} /></button>
         <span className="pdl-back-title">Sua conta</span>
         <button onClick={() => router.push('/carrinho')} aria-label="Sacola" style={{ position: 'relative' }}>
           <IconBag size={16} />
