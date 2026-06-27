@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
-import PdlImg from '@/components/PdlImg';
 import { IconChevronLeft, IconBag, IconGoogle, IconArrowRight } from '@/components/Icons';
 import { useCart } from '@/context/CartContext';
 import { createBrowserClient } from '@supabase/ssr';
@@ -20,6 +19,8 @@ function PerfilContent() {
   const [signingIn, setSigningIn] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [showAddrForm, setShowAddrForm] = useState(false);
+  const [showEditName, setShowEditName] = useState(false);
+  const [editingName, setEditingName] = useState('');
   const [newAddr, setNewAddr] = useState({ label: 'Casa', zip: '', street: '', complement: '', neighborhood: '', city: '', state: '' });
 
   const supabase = createBrowserClient(
@@ -156,12 +157,26 @@ function PerfilContent() {
             <div className="name">{userName}</div>
             <div className="email">{user.email}</div>
           </div>
-        </div>
-
-        <div className="pdl-profile-stats">
-          <div className="pdl-stat"><div className="v">0</div><div className="l">pedidos</div></div>
-          <div className="pdl-stat"><div className="v">0</div><div className="l">favoritos</div></div>
-          <div className="pdl-stat"><div className="v">0</div><div className="l">endereços</div></div>
+          <button
+            onClick={() => {
+              setShowEditName(true);
+              setEditingName(userName);
+            }}
+            style={{
+              marginLeft: 'auto',
+              fontSize: 12,
+              fontFamily: 'var(--editorial)',
+              fontStyle: 'italic',
+              color: 'var(--terra)',
+              background: 'none',
+              border: 'none',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            Alterar meu nome
+          </button>
         </div>
 
         <div className="pdl-profile-section">
@@ -233,19 +248,7 @@ function PerfilContent() {
 
         <div className="pdl-profile-section">
           <h3><span>Meus <em>favoritos</em></span><span className="action">ver todos</span></h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            <div><PdlImg tint="rose" style={{ aspectRatio: '3/4', borderRadius: 3 }} /><div style={{ fontFamily: 'var(--editorial)', fontSize: 12, color: 'var(--ink)', marginTop: 6 }}>Vestido Margarida</div></div>
-            <div><PdlImg tint="sage" style={{ aspectRatio: '3/4', borderRadius: 3 }} /><div style={{ fontFamily: 'var(--editorial)', fontSize: 12, color: 'var(--ink)', marginTop: 6 }}>Camisa Borboleta</div></div>
-            <div><PdlImg tint="ochre" style={{ aspectRatio: '3/4', borderRadius: 3 }} /><div style={{ fontFamily: 'var(--editorial)', fontSize: 12, color: 'var(--ink)', marginTop: 6 }}>Vestido Lavanda</div></div>
-          </div>
-        </div>
-
-        <div className="pdl-profile-section" style={{ paddingBottom: 12 }}>
-          <h3><span>Preferências</span></h3>
-          <div className="pdl-profile-row"><span className="lbl">Tamanhos dos pequenos</span><span className="meta">2 · 4</span></div>
-          <div className="pdl-profile-row"><span className="lbl">Newsletter <em>· coleções novas</em></span><span className="meta">ativada</span></div>
-          <div className="pdl-profile-row"><span className="lbl">Cartões salvos</span><span className="meta">1 cartão</span></div>
-          <div className="pdl-profile-row"><span className="lbl">Notificações</span><span className="meta">e-mail</span></div>
+          <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>Suas peças favoritas aparecerão aqui.</div>
         </div>
 
         <div className="pdl-profile-section" style={{ paddingTop: 16 }}>
@@ -254,6 +257,86 @@ function PerfilContent() {
           <div className="pdl-profile-row"><span className="lbl">Trocas e devoluções</span><span className="meta"><IconArrowRight size={11} /></span></div>
           <div className="pdl-profile-row"><span className="lbl">Guia de tamanhos</span><span className="meta"><IconArrowRight size={11} /></span></div>
         </div>
+
+        {showEditName && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}>
+            <div style={{
+              background: '#fff',
+              borderRadius: 12,
+              padding: 24,
+              maxWidth: 320,
+              width: '90%',
+            }}>
+              <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 600 }}>Alterar nome</h3>
+              <input
+                type="text"
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                placeholder="Seu nome"
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  border: '1px solid var(--border)',
+                  borderRadius: 6,
+                  fontSize: 14,
+                  marginBottom: 16,
+                  fontFamily: 'var(--sans)',
+                }}
+              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={async () => {
+                    if (editingName.trim()) {
+                      const { error } = await supabase.auth.updateUser({
+                        data: { full_name: editingName },
+                      });
+                      if (!error) {
+                        setUser(u => u ? { ...u, user_metadata: { ...u.user_metadata, full_name: editingName } } : null);
+                        setShowEditName(false);
+                      }
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    background: 'var(--ink)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Salvar
+                </button>
+                <button
+                  onClick={() => setShowEditName(false)}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    background: 'var(--cream-warm)',
+                    color: 'var(--ink)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="pdl-logout" onClick={handleLogout}>sair da conta</div>
 
