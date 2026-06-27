@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import PdlImg from '@/components/PdlImg';
 import { IconChevronLeft, IconBag, IconGoogle, IconArrowRight } from '@/components/Icons';
 import { useCart } from '@/context/CartContext';
@@ -90,8 +91,14 @@ function PerfilContent() {
 
         <div className="pdl-login">
           <div className="pdl-login-logo">
-            <span className="pdl-login-spark">Pingo</span>
-            <em>de luz</em>
+            <Image
+              src="/logo-transparente.png"
+              alt="Pingo de Luz"
+              width={200}
+              height={100}
+              priority
+              style={{ maxWidth: '100%', height: 'auto' }}
+            />
           </div>
 
           <h2 className="pdl-login-welcome">Bem-vinda <em>de volta.</em></h2>
