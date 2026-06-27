@@ -11,6 +11,15 @@ import { TABELA_MEDIDAS, SIZES_MENINAS, fetchCatalog, calcInstallments } from '@
 import type { Product, SizeTable, PaymentConfig } from '@/lib/data';
 import { useCart } from '@/context/CartContext';
 
+function formatSize(s: string): string {
+  if (s.endsWith('m')) {
+    const n = parseInt(s);
+    return n === 1 ? '1 mês' : `${n} meses`;
+  }
+  const n = parseInt(s);
+  return n === 1 ? '1 ano' : `${n} anos`;
+}
+
 const COL_SLUG: Record<string, string> = {
   'Jardim Encantado': 'jardim',
   'Doce Aventura': 'doce',
@@ -30,7 +39,7 @@ export default function ProdutoClient({
   const [size, setSize] = useState<string | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
   const [galleryIdx, setGalleryIdx] = useState(0);
-  const [openAcc, setOpenAcc] = useState<string | null>(null);
+  const [openAcc, setOpenAcc] = useState<string | null>('medidas');
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [relIdx, setRelIdx] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -184,7 +193,7 @@ export default function ProdutoClient({
                 onClick={handleBuy}
                 disabled={!size}
               >
-                {size ? `Comprar · Tam. ${size}` : 'escolha um tamanho'}
+                {size ? `Comprar · Tamanho ${formatSize(size)}` : 'escolha um tamanho'}
                 {size && <IconArrowRight size={12} />}
               </button>
             </div>
@@ -196,43 +205,9 @@ export default function ProdutoClient({
             <div className="pdl-prodpage-section">
               <h4><span>detalhes</span></h4>
               <div className="pdl-acc">
-                <div className="pdl-acc-head" onClick={() => toggle('compo')}>
-                  <span>Composição e cuidado</span>
-                  <IconChevronDown size={14} />
-                </div>
-                {openAcc === 'compo' && (
-                  <div className="pdl-acc-body">
-                    100% musselina de algodão orgânico, certificado GOTS. Lavar à mão com água fria, secar à sombra.
-                    Bordado feito à mão em ateliê parceiro em Minas Gerais.
-                  </div>
-                )}
-              </div>
-              <div className="pdl-acc">
-                <div className="pdl-acc-head" onClick={() => toggle('feito')}>
-                  <span>Feito à mão por</span>
-                  <IconChevronDown size={14} />
-                </div>
-                {openAcc === 'feito' && (
-                  <div className="pdl-acc-body">
-                    Cooperativa Flor de Lis, Pirapora — MG. Cada peça leva o nome bordado da artesã na etiqueta interna.
-                  </div>
-                )}
-              </div>
-              <div className="pdl-acc">
-                <div className="pdl-acc-head" onClick={() => toggle('envio')}>
-                  <span>Envio e trocas</span>
-                  <IconChevronDown size={14} />
-                </div>
-                {openAcc === 'envio' && (
-                  <div className="pdl-acc-body">
-                    Envio em até 3 dias úteis. Frete grátis em compras acima de R$ 250. Trocas em até 30 dias, sem perguntas.
-                  </div>
-                )}
-              </div>
-              <div className="pdl-acc">
                 <div className="pdl-acc-head" onClick={() => toggle('medidas')}>
                   <span>Medidas</span>
-                  <IconChevronDown size={14} />
+                  <span className={`pdl-acc-chevron${openAcc === 'medidas' ? ' open' : ''}`}><IconChevronDown size={14} /></span>
                 </div>
                 {openAcc === 'medidas' && (
                   <div className="pdl-acc-body" style={{ paddingTop: 12 }}>
@@ -283,6 +258,40 @@ export default function ProdutoClient({
                       </div>
                       <div className="pdl-size-chart-caption">medidas em centímetros · corpo da criança</div>
                     </div>
+                  </div>
+                )}
+              </div>
+              <div className="pdl-acc">
+                <div className="pdl-acc-head" onClick={() => toggle('compo')}>
+                  <span>Composição e cuidado</span>
+                  <span className={`pdl-acc-chevron${openAcc === 'compo' ? ' open' : ''}`}><IconChevronDown size={14} /></span>
+                </div>
+                {openAcc === 'compo' && (
+                  <div className="pdl-acc-body">
+                    100% musselina de algodão orgânico, certificado GOTS. Lavar à mão com água fria, secar à sombra.
+                    Bordado feito à mão em ateliê parceiro em Minas Gerais.
+                  </div>
+                )}
+              </div>
+              <div className="pdl-acc">
+                <div className="pdl-acc-head" onClick={() => toggle('feito')}>
+                  <span>Feito à mão por</span>
+                  <span className={`pdl-acc-chevron${openAcc === 'feito' ? ' open' : ''}`}><IconChevronDown size={14} /></span>
+                </div>
+                {openAcc === 'feito' && (
+                  <div className="pdl-acc-body">
+                    Cooperativa Flor de Lis, Pirapora — MG. Cada peça leva o nome bordado da artesã na etiqueta interna.
+                  </div>
+                )}
+              </div>
+              <div className="pdl-acc">
+                <div className="pdl-acc-head" onClick={() => toggle('envio')}>
+                  <span>Envio e trocas</span>
+                  <span className={`pdl-acc-chevron${openAcc === 'envio' ? ' open' : ''}`}><IconChevronDown size={14} /></span>
+                </div>
+                {openAcc === 'envio' && (
+                  <div className="pdl-acc-body">
+                    Envio em até 3 dias úteis. Frete grátis em compras acima de R$ 250. Trocas em até 30 dias, sem perguntas.
                   </div>
                 )}
               </div>
@@ -357,7 +366,7 @@ export default function ProdutoClient({
           onClick={handleBuy}
           disabled={!size}
         >
-          {size ? `Comprar · Tam. ${size}` : 'escolha um tamanho'}
+          {size ? `Comprar · Tamanho ${formatSize(size)}` : 'escolha um tamanho'}
           {size && <IconArrowRight size={12} />}
         </button>
       </div>

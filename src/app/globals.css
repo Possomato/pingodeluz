@@ -222,6 +222,8 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
 .pdl-acc { border-top: 1px solid var(--border-soft); padding: 16px 0; }
 .pdl-acc:last-child { border-bottom: 1px solid var(--border-soft); }
 .pdl-acc-head { display: flex; justify-content: space-between; align-items: center; font-family: var(--editorial); font-size: 16px; cursor: pointer; }
+.pdl-acc-chevron { transition: transform 0.2s; }
+.pdl-acc-chevron.open { transform: rotate(180deg); }
 .pdl-acc-body { font-family: var(--editorial); font-size: 14px; color: var(--ink-soft); padding-top: 8px; line-height: 1.45; }
 
 /* collection page */
@@ -970,13 +972,13 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
 }
 
 /* ── CTA button — two states ─────────────────────────────────── */
-.pdl-cta-btn {
+button.pdl-cta-btn {
   width: 100%;
-  padding: 15px 20px;
+  padding: 19px 24px;
   border-radius: 999px;
   font-family: var(--sans);
   font-weight: 600;
-  font-size: 13px;
+  font-size: 15px;
   letter-spacing: 0.04em;
   display: flex;
   align-items: center;
@@ -987,7 +989,7 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
   color: var(--muted);
   cursor: not-allowed;
 }
-.pdl-cta-btn.active {
+button.pdl-cta-btn.active {
   background: var(--ink);
   color: var(--cream-warm);
   cursor: pointer;
