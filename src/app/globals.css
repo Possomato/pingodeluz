@@ -228,6 +228,7 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
 
 /* collection page */
 .pdl-coll-hero { position: relative; height: 360px; overflow: hidden; margin-bottom: 0; }
+.pdl-genpage-hero { height: 280px; }
 .pdl-coll-hero .pdl-img { position: absolute; inset: 0; }
 .pdl-coll-hero-overlay { position: absolute; inset: 0; padding: 80px 22px 26px; background: linear-gradient(180deg, rgba(42,36,25,0.35) 0%, rgba(42,36,25,0.0) 50%, rgba(42,36,25,0.65) 100%); display: flex; flex-direction: column; justify-content: space-between; color: #fbf6e9; }
 .pdl-coll-hero-top { display: flex; justify-content: space-between; align-items: flex-start; }
@@ -239,11 +240,17 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
 .pdl-coll-intro p { font-family: var(--editorial); font-style: italic; font-size: 15px; line-height: 1.45; color: var(--ink-soft); margin: 0; text-wrap: pretty; }
 .pdl-coll-filters { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 18px 20px; border-bottom: 1px solid var(--border-soft); }
 .pdl-coll-filters::-webkit-scrollbar { display: none; }
-.pdl-chip { flex: 0 0 auto; padding: 8px 14px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; background: var(--cream-warm); border: 1px solid var(--border-soft); border-radius: 999px; color: var(--ink-soft); cursor: pointer; }
-.pdl-chip.active { background: var(--ink); color: var(--cream-warm); border-color: var(--ink); }
+button.pdl-chip { flex: 0 0 auto; padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.02em; background: var(--cream-warm); border: 1px solid var(--border-soft); border-radius: 999px; color: var(--ink-soft); cursor: pointer; }
+button.pdl-chip.active { background: var(--ink); color: var(--cream-warm); border-color: var(--ink); }
 .pdl-coll-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 10px; padding: 22px 16px 0; }
+/* Mobile sidebar: show only intro, hide title/filter list (chips below handle filtering) */
+.pdl-sidebar { display: block; padding: 16px 20px 18px; border-bottom: 1px solid var(--border-soft); }
+.pdl-sidebar-title { display: none; }
+.pdl-sidebar-filter-label { display: none; }
+.pdl-sidebar-filters { display: none; }
+.pdl-sidebar-intro { font-family: var(--editorial); font-style: italic; font-size: 14px; color: var(--ink-soft); line-height: 1.5; margin: 0; }
 .pdl-coll-grid .pdl-prod { flex: initial; }
-.pdl-coll-info-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 22px; font-size: 11px; color: var(--muted); }
+.pdl-coll-info-row { display: none; }
 
 /* back bar */
 .pdl-back-bar { position: sticky; top: 0; z-index: 30; padding: 16px 16px 12px; display: flex; align-items: center; justify-content: space-between; background: transparent; }
@@ -352,7 +359,7 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
 .pdl-login-welcome { margin: 36px 0 12px; font-family: var(--serif); font-size: 28px; font-weight: 500; line-height: 1.1; }
 .pdl-login-welcome em { font-family: var(--editorial); font-style: italic; font-weight: 400; }
 .pdl-login-sub { font-family: var(--editorial); font-style: italic; font-size: 15px; color: var(--ink-soft); max-width: 280px; line-height: 1.45; margin-bottom: 36px; text-wrap: pretty; }
-.pdl-google-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 14px 18px; background: #fff; border: 1px solid var(--border); border-radius: 999px; font-family: var(--sans); font-weight: 600; font-size: 14px; color: var(--ink); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+.pdl-google-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 14px 18px; background: #fff; border: 2px solid var(--ink); border-radius: 999px; font-family: var(--sans); font-weight: 600; font-size: 14px; color: var(--ink); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
 .pdl-google-btn:disabled { background: var(--cream-warm); color: var(--muted); cursor: wait; }
 .pdl-login-foot { margin-top: 28px; font-family: var(--editorial); font-style: italic; font-size: 12.5px; color: var(--muted); line-height: 1.5; max-width: 260px; }
 .pdl-login-foot a { color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; }
@@ -753,18 +760,20 @@ html, body { margin: 0; padding: 0; background: var(--cream); overflow-x: clip; 
 
   /* Sidebar layout for collection + gender pages */
   .pdl-sidebar-layout { display: grid; grid-template-columns: 220px 1fr; gap: 48px; align-items: start; margin-top: 32px; }
-  .pdl-sidebar { position: sticky; top: 80px; }
-  .pdl-sidebar-title { font-family: var(--serif); font-size: 20px; margin-bottom: 8px; }
+  .pdl-sidebar { display: block; position: sticky; top: 80px; padding: 0; border-bottom: none; }
+  .pdl-sidebar-title { display: block; font-family: var(--serif); font-size: 20px; margin-bottom: 8px; }
   .pdl-sidebar-title em { font-style: italic; color: var(--muted); }
-  .pdl-sidebar-intro { font-family: var(--editorial); font-style: italic; font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 20px; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
-  .pdl-sidebar-filter-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; font-weight: 600; }
+  .pdl-sidebar-intro { font-size: 13px; margin-bottom: 20px; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+  .pdl-sidebar-filter-label { display: block; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; font-weight: 600; }
   .pdl-sidebar-filters { display: flex; flex-direction: column; gap: 4px; }
   .pdl-sidebar-filter { font-size: 13px; color: var(--ink-soft); padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: background 0.12s; }
   .pdl-sidebar-filter:hover, .pdl-sidebar-filter.active { background: var(--cream-deep); color: var(--ink); }
 
-  /* Collection/gender hero shorter on desktop */
-  .pdl-colpage-hero { height: 180px !important; }
-  .pdl-genpage-hero { height: 160px !important; }
+  /* Collection/gender hero on desktop */
+  .pdl-colpage-hero { height: 340px; }
+  .pdl-genpage-hero { height: 400px; }
+  /* Overlay top-padding: on desktop the header is opaque and in flow, no transparent overlay to clear */
+  .pdl-coll-hero-overlay { padding-top: 32px; }
 
   /* Hide inline filter chips on desktop (replaced by sidebar) */
   .pdl-coll-filters { display: none; }
