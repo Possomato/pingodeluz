@@ -359,7 +359,7 @@ button.pdl-chip.active { background: var(--ink); color: var(--cream-warm); borde
 .pdl-login-welcome { margin: 36px 0 12px; font-family: var(--serif); font-size: 28px; font-weight: 500; line-height: 1.1; }
 .pdl-login-welcome em { font-family: var(--editorial); font-style: italic; font-weight: 400; }
 .pdl-login-sub { font-family: var(--editorial); font-style: italic; font-size: 15px; color: var(--ink-soft); max-width: 280px; line-height: 1.45; margin-bottom: 36px; text-wrap: pretty; }
-.pdl-google-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 14px 18px; background: #fff; border: 2px solid var(--ink) !important; border-radius: 999px; font-family: var(--sans); font-weight: 600; font-size: 14px; color: var(--ink); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+.pdl-google-btn { max-width: 280px; margin: 0 auto; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 24px; background: #fff; border: 2px solid var(--ink) !important; border-radius: 999px; font-family: var(--sans); font-weight: 600; font-size: 14px; color: var(--ink); cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
 .pdl-google-btn:disabled { background: var(--cream-warm); color: var(--muted); cursor: wait; }
 .pdl-login-foot { margin-top: 28px; font-family: var(--editorial); font-style: italic; font-size: 12.5px; color: var(--muted); line-height: 1.5; max-width: 260px; }
 .pdl-login-foot a { color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; }
