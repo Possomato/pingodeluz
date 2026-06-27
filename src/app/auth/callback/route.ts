@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { ensureUserProfile } from '@/app/actions/auth-user';
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -25,6 +26,8 @@ export async function GET(request: Request) {
     );
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      // Ensure user profile exists in profiles table
+      await ensureUserProfile();
       return NextResponse.redirect(`${origin}${next}`);
     }
   }
