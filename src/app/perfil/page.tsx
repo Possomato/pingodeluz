@@ -97,7 +97,8 @@ function PerfilContent() {
               width={200}
               height={100}
               priority
-              style={{ maxWidth: '100%', height: 'auto' }}
+              sizes="(max-width: 768px) 100vw, 200px"
+              style={{ width: 'auto', height: 'auto', maxWidth: '100%' }}
             />
           </div>
 
