@@ -13,6 +13,7 @@ export default function SizeTableForm({ initial, onSave }: Props) {
     id: initial.id ?? '',
     name: initial.name ?? '',
     columns: initial.columns ?? [],
+    columnTypes: initial.columnTypes ?? {},
     rows: initial.rows ?? [],
   });
   const [toast, setToast] = useState(false);
@@ -33,6 +34,9 @@ export default function SizeTableForm({ initial, onSave }: Props) {
         }),
       };
     });
+
+  const setColumnType = (col: string, type: 'crianca' | 'vestido') =>
+    setForm(f => ({ ...f, columnTypes: { ...f.columnTypes, [col]: type } }));
 
   const removeColumn = (i: number) =>
     setForm(f => ({
@@ -80,17 +84,41 @@ export default function SizeTableForm({ initial, onSave }: Props) {
       <div className="adm-field">
         <label>Colunas (medidas)</label>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-          {form.columns.map((col, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <input
-                value={col}
-                onChange={e => renameColumn(i, e.target.value)}
-                placeholder="ex: tórax"
-                style={{ width: 120 }}
-              />
-              <button type="button" onClick={() => removeColumn(i)} style={{ color: 'var(--terra)', fontWeight: 700, padding: '0 4px' }}>×</button>
-            </div>
-          ))}
+          {form.columns.map((col, i) => {
+            const colType = form.columnTypes[col] ?? 'crianca';
+            return (
+              <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <input
+                    value={col}
+                    onChange={e => renameColumn(i, e.target.value)}
+                    placeholder="ex: tórax"
+                    style={{ width: 120 }}
+                  />
+                  <button type="button" onClick={() => removeColumn(i)} style={{ color: 'var(--terra)', fontWeight: 700, padding: '0 4px' }}>×</button>
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {(['crianca', 'vestido'] as const).map(opt => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setColumnType(col, opt)}
+                      style={{
+                        fontSize: 11, padding: '3px 10px', borderRadius: 999,
+                        border: '1px solid',
+                        borderColor: colType === opt ? '#2e7d5e' : '#e0d9ce',
+                        background: colType === opt ? '#2e7d5e' : 'transparent',
+                        color: colType === opt ? '#fff' : '#888',
+                        cursor: 'pointer', fontWeight: 600,
+                      }}
+                    >
+                      {opt === 'crianca' ? 'Criança' : 'Vestido'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
           <button type="button" className="adm-btn adm-btn-secondary" onClick={addColumn}>+ coluna</button>
         </div>
       </div>

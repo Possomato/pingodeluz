@@ -130,7 +130,24 @@ export interface SizeTable {
   id: string;
   name: string;
   columns: string[];
+  columnTypes: Record<string, 'crianca' | 'vestido'>;
   rows: { size: string; values: Record<string, number> }[];
+}
+
+type StoredColumn = string | { name: string; type: 'crianca' | 'vestido' };
+
+export function parseStoredColumns(raw: StoredColumn[]): { columns: string[]; columnTypes: Record<string, 'crianca' | 'vestido'> } {
+  const columns: string[] = [];
+  const columnTypes: Record<string, 'crianca' | 'vestido'> = {};
+  for (const c of raw) {
+    if (typeof c === 'string') {
+      columns.push(c);
+    } else {
+      columns.push(c.name);
+      columnTypes[c.name] = c.type;
+    }
+  }
+  return { columns, columnTypes };
 }
 
 export const DEFAULT_SIZE_TABLES: SizeTable[] = [
@@ -138,6 +155,7 @@ export const DEFAULT_SIZE_TABLES: SizeTable[] = [
     id: 'padrao-meninas',
     name: 'Padrão meninas',
     columns: ['tórax', 'cintura', 'comprimento'],
+    columnTypes: {},
     rows: TABELA_MEDIDAS.map(r => ({
       size: r.manequim,
       values: { 'tórax': r.torax, 'cintura': r.cintura, 'comprimento': r.comprimento },
@@ -466,12 +484,10 @@ export async function fetchSizeTables(): Promise<SizeTable[]> {
     if (!res.ok) return [];
     const rows = await res.json();
     if (!rows.length) return [];
-    return rows.map((r: Record<string, unknown>) => ({
-      id: r.id as string,
-      name: r.name as string,
-      columns: r.columns as string[],
-      rows: r.rows as SizeTable['rows'],
-    }));
+    return rows.map((r: Record<string, unknown>) => {
+      const { columns, columnTypes } = parseStoredColumns((r.columns as StoredColumn[]) ?? []);
+      return { id: r.id as string, name: r.name as string, columns, columnTypes, rows: r.rows as SizeTable['rows'] };
+    });
   } catch {
     return [];
   }

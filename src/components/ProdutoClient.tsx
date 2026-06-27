@@ -219,7 +219,15 @@ export default function ProdutoClient({
                             <thead>
                               <tr>
                                 <th>tam.</th>
-                                {sizeTable.columns.map(col => <th key={col}>{col}</th>)}
+                                {sizeTable.columns.map(col => {
+                                  const t = sizeTable.columnTypes?.[col];
+                                  return (
+                                    <th key={col}>
+                                      <span style={{ display: 'block' }}>{col}</span>
+                                      {t && <span style={{ display: 'block', fontSize: 9, fontWeight: 400, opacity: 0.6, marginTop: 1 }}>{t === 'crianca' ? 'da criança' : 'do vestido'}</span>}
+                                    </th>
+                                  );
+                                })}
                               </tr>
                             </thead>
                             <tbody>

@@ -80,10 +80,14 @@ export async function upsertHomepageSectionAction(section: HomepageSection) {
 
 export async function upsertSizeTableAction(t: SizeTable) {
   const supabase = createServiceClient();
+  const storedColumns = t.columns.map(name => ({
+    name,
+    type: (t.columnTypes ?? {})[name] ?? 'crianca',
+  }));
   const { error } = await supabase.from('size_tables').upsert({
     id: t.id,
     name: t.name,
-    columns: t.columns,
+    columns: storedColumns,
     rows: t.rows,
   });
   if (error) throw new Error(error.message);
