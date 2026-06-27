@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import PdlHeader from '@/components/PdlHeader';
+import PdlFooter from '@/components/PdlFooter';
 import { IconChevronLeft, IconBag, IconGoogle, IconArrowRight } from '@/components/Icons';
 import { useCart } from '@/context/CartContext';
 import { createBrowserClient } from '@supabase/ssr';
@@ -339,6 +340,8 @@ function PerfilContent() {
           Conta vinculada ao Google
         </div>
       </div>
+
+      <PdlFooter />
     </div>
   );
 }
