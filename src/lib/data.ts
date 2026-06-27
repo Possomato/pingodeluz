@@ -208,6 +208,13 @@ export const MOCK_ADDRESSES = [
   { id: 'vovo', label: 'Casa da vovó', primary: false, line1: 'Rua Florença, 88', line2: 'Lourdes · Belo Horizonte/MG', cep: '30170-040' },
 ];
 
+export const AGE_GROUPS: { label: string; sizes: string[] }[] = [
+  { label: '0–2 anos', sizes: ['1m', '3m', '6m', '9m', '1', '2'] },
+  { label: '3–6 anos', sizes: ['3', '4', '5', '6'] },
+  { label: '7–12 anos', sizes: ['7', '8', '9', '10', '11', '12'] },
+  { label: '12+ anos', sizes: ['13', '14'] },
+];
+
 export function parsePrice(s: string): number {
   return parseInt(String(s).replace(/[^\d]/g, ''), 10) || 0;
 }

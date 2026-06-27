@@ -34,12 +34,12 @@ export function ProductForm({ initial, onSave }: {
     : initial.imageUrl ? [initial.imageUrl] : [];
 
   const [form, setForm] = useState<Partial<Product>>({
-    name: '', col: 'Jardim Encantado', gender: 'meninas', price: '',
+    name: '', col: '', gender: 'meninas', price: '',
     desc: '', tint: 'rose',
     ...initial,
     imageUrls: resolvedUrls,
   });
-  const { sizeTables } = useAdmin();
+  const { sizeTables, collections } = useAdmin();
   const [toast, setToast] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -87,9 +87,11 @@ export function ProductForm({ initial, onSave }: {
         <div className="adm-field">
           <label>Coleção</label>
           <select value={form.col ?? ''} onChange={e => set('col', e.target.value)}>
-            <option value="Jardim Encantado">Jardim Encantado</option>
-            <option value="Doce Aventura">Doce Aventura</option>
-            <option value="Avulso">Avulso</option>
+            <option value="">— selecione —</option>
+            {Object.values(collections).map(col => {
+              const label = col.name.join(' ');
+              return <option key={col.id} value={label}>{label}</option>;
+            })}
           </select>
         </div>
       </div>

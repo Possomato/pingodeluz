@@ -7,7 +7,7 @@ import PdlDrawer from '@/components/PdlDrawer';
 import PdlFooter from '@/components/PdlFooter';
 import PdlImg from '@/components/PdlImg';
 import { IconChevronDown } from '@/components/Icons';
-import type { Collection } from '@/lib/data';
+import { AGE_GROUPS, type Collection } from '@/lib/data';
 
 export default function ColecaoClient({ c, filters }: { c: Collection; filters: string[] }) {
   const router = useRouter();
@@ -67,7 +67,14 @@ export default function ColecaoClient({ c, filters }: { c: Collection; filters: 
             </span>
           </div>
           <div className="pdl-coll-grid">
-            {c.products.map(p => (
+            {(filter === 'todas'
+              ? c.products
+              : c.products.filter(p => {
+                  const ageGroup = AGE_GROUPS.find(g => g.label === filter);
+                  if (ageGroup) return (p.sizes ?? []).some(s => ageGroup.sizes.includes(s));
+                  return p.type === filter;
+                })
+            ).map(p => (
               <div key={p.id} className="pdl-prod" onClick={() => router.push(`/produto/${p.id}`)}>
                 <PdlImg tint={p.tint} imageUrl={p.imageUrl} label={p.label} />
                 <div className="pdl-prod-info">

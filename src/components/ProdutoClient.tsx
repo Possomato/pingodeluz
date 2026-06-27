@@ -26,12 +26,13 @@ const COL_SLUG: Record<string, string> = {
 };
 
 export default function ProdutoClient({
-  p, id, sizeTable, paymentConfig,
+  p, id, sizeTable, paymentConfig, colIntro,
 }: {
   p: Product;
   id: string;
   sizeTable: SizeTable | null;
   paymentConfig: PaymentConfig;
+  colIntro: string;
 }) {
   const router = useRouter();
   const { addToCart } = useCart();
@@ -298,15 +299,14 @@ export default function ProdutoClient({
             </div>
 
             {/* Histórias da coleção */}
-            <div style={{ marginTop: 36, padding: '28px 0', borderTop: '1px solid var(--border-soft)', borderBottom: '1px solid var(--border-soft)' }}>
-              <div className="pdl-eyebrow" style={{ marginBottom: 10 }}>histórias da coleção</div>
-              <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 16, lineHeight: 1.4, color: 'var(--ink-soft)' }}>
-                "O bordado de margarida nasceu de uma manhã no jardim da minha avó, que dizia que cada flor era um recado."
+            {colIntro && (
+              <div style={{ marginTop: 36, padding: '28px 0', borderTop: '1px solid var(--border-soft)', borderBottom: '1px solid var(--border-soft)' }}>
+                <div className="pdl-eyebrow" style={{ marginBottom: 10 }}>histórias da coleção</div>
+                <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 16, lineHeight: 1.4, color: 'var(--ink-soft)' }}>
+                  {colIntro}
+                </div>
               </div>
-              <div style={{ marginTop: 12, fontSize: 11, color: 'var(--muted)', letterSpacing: 0.1, textTransform: 'uppercase' }}>
-                — Carolina Bastos, criadora
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

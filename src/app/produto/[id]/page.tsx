@@ -1,5 +1,5 @@
 import ProdutoClient from '@/components/ProdutoClient';
-import { fetchProductById, fetchSizeTableById, fetchPaymentConfig } from '@/lib/data';
+import { fetchProductById, fetchSizeTableById, fetchPaymentConfig, fetchCollections } from '@/lib/data';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -9,10 +9,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function ProdutoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [p, paymentConfig] = await Promise.all([
+  const [p, paymentConfig, collections] = await Promise.all([
     fetchProductById(id),
     fetchPaymentConfig(),
+    fetchCollections().catch(() => ({})),
   ]);
   const sizeTable = await fetchSizeTableById(p.sizeTableId);
-  return <ProdutoClient p={p} id={id} sizeTable={sizeTable} paymentConfig={paymentConfig} />;
+  const colIntro = Object.values(collections).find(c => c.name.join(' ') === p.col)?.intro ?? '';
+  return <ProdutoClient p={p} id={id} sizeTable={sizeTable} paymentConfig={paymentConfig} colIntro={colIntro} />;
 }

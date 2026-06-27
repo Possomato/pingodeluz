@@ -83,7 +83,7 @@ export default function EditColecaoPage() {
         <div className="adm-field">
           <label>Imagem hero</label>
           <ImageCropUploader
-            aspect={7 / 9}
+            aspect={4 / 2}
             currentUrl={form.imageUrl ?? undefined}
             onUpload={url => set('imageUrl', url)}
             label="foto"
