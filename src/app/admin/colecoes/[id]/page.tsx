@@ -14,7 +14,7 @@ const TINT_COLORS: Record<string, string> = {
 
 export default function EditColecaoPage() {
   const { id } = useParams<{ id: string }>();
-  const { collections, updateCollection } = useAdmin();
+  const { collections, updateCollection, deleteCollection } = useAdmin();
   const router = useRouter();
   const col = collections[id];
 
@@ -107,6 +107,17 @@ export default function EditColecaoPage() {
 
         <div className="adm-form-actions">
           <button type="submit" className="adm-btn adm-btn-primary">Salvar coleção</button>
+          <button
+            type="button"
+            className="adm-btn adm-btn-danger"
+            onClick={async () => {
+              if (!window.confirm(`Excluir a coleção "${col.name[0]} ${col.name[1]}"? Esta ação não pode ser desfeita.`)) return;
+              await deleteCollection(id);
+              router.push('/admin/colecoes');
+            }}
+          >
+            Excluir coleção
+          </button>
         </div>
       </form>
 

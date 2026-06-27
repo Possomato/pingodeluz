@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Product, Collection, HOME_PRODUCTS, COLLECTIONS, fetchCatalog, fetchCollections, HomepageSection, HomepageSectionId, DEFAULT_HOMEPAGE_CONFIG, fetchHomepageConfig, SizeTable, DEFAULT_SIZE_TABLES, fetchSizeTables, PaymentConfig, DEFAULT_PAYMENT_CONFIG, fetchPaymentConfig } from '@/lib/data';
-import { upsertProductAction, deleteProductAction, upsertCollectionAction, upsertHomepageSectionAction, upsertSizeTableAction, deleteSizeTableAction, upsertPaymentConfigAction } from '@/app/actions/admin';
+import { upsertProductAction, deleteProductAction, upsertCollectionAction, deleteCollectionAction, upsertHomepageSectionAction, upsertSizeTableAction, deleteSizeTableAction, upsertPaymentConfigAction } from '@/app/actions/admin';
 
 const ADMIN_PASSWORD = 'pingo2024';
 const AUTH_KEY = 'pdl_admin_auth';
@@ -16,7 +16,9 @@ interface AdminContextType {
   addProduct: (p: Omit<Product, 'id'>) => Promise<string>;
   updateProduct: (id: string, p: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
+  addCollection: (name: [string, string]) => Promise<string>;
   updateCollection: (id: string, c: Partial<Collection>) => Promise<void>;
+  deleteCollection: (id: string) => Promise<void>;
   homepageConfig: Record<HomepageSectionId, HomepageSection>;
   updateHomepageSection: (id: HomepageSectionId, patch: Partial<HomepageSection>) => Promise<void>;
   sizeTables: SizeTable[];
@@ -119,9 +121,24 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     await deleteSizeTableAction(id).catch(console.error);
   };
 
+  const deleteCollection = async (id: string) => {
+    setCollections(prev => { const next = { ...prev }; delete next[id]; return next; });
+    await deleteCollectionAction(id).catch(console.error);
+  };
+
   const updatePaymentConfig = async (config: PaymentConfig) => {
     setPaymentConfig(config);
     await upsertPaymentConfigAction(config).catch(console.error);
+  };
+
+  const addCollection = async (name: [string, string]): Promise<string> => {
+    const base = name[0].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'colecao';
+    const taken = Object.keys(collections).includes(base);
+    const id = taken ? `${base}-${Date.now()}` : base;
+    const newCol: Collection = { id, name, eyebrow: '', tint: 'rose', intro: '', count: 0, products: [] };
+    setCollections(prev => ({ ...prev, [id]: newCol }));
+    await upsertCollectionAction(newCol).catch(console.error);
+    return id;
   };
 
   const updateCollection = async (id: string, patch: Partial<Collection>) => {
@@ -133,7 +150,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AdminContext.Provider value={{ isAuthenticated, login, logout, products, collections, addProduct, updateProduct, deleteProduct, updateCollection, homepageConfig, updateHomepageSection, sizeTables, addSizeTable, updateSizeTable, deleteSizeTable, paymentConfig, updatePaymentConfig }}>
+    <AdminContext.Provider value={{ isAuthenticated, login, logout, products, collections, addProduct, updateProduct, deleteProduct, addCollection, updateCollection, deleteCollection, homepageConfig, updateHomepageSection, sizeTables, addSizeTable, updateSizeTable, deleteSizeTable, paymentConfig, updatePaymentConfig }}>
       {children}
     </AdminContext.Provider>
   );

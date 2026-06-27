@@ -8,14 +8,15 @@ import PdlFooter from '@/components/PdlFooter';
 import PdlImg from '@/components/PdlImg';
 import InstagramFeed from '@/components/InstagramFeed';
 import { Sparkle, IconArrowRight } from '@/components/Icons';
-import { TESTIMONIALS, type Product, type HomepageSection, type HomepageSectionId } from '@/lib/data';
+import { TESTIMONIALS, type Product, type Collection, type HomepageSection, type HomepageSectionId } from '@/lib/data';
 
 interface Props {
   hpConfig: Record<HomepageSectionId, HomepageSection>;
   products: Product[];
+  collections: Record<string, Collection>;
 }
 
-export default function HomeClient({ hpConfig, products }: Props) {
+export default function HomeClient({ hpConfig, products, collections }: Props) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -106,26 +107,18 @@ export default function HomeClient({ hpConfig, products }: Props) {
             <span className="more">ver todas <IconArrowRight size={10} /></span>
           </div>
           <div className="pdl-collections">
-            <div className="pdl-col-card" onClick={() => router.push('/colecao/jardim')}>
-              <PdlImg tint="rose" label="lookbook · jardim encantado · meninas 1–12" />
-              <div className="pdl-col-overlay">
-                <span className="pdl-col-tag">meninas · 1–12 anos</span>
-                <div>
-                  <div className="pdl-col-name">Jardim<em>Encantado</em></div>
-                  <div className="pdl-col-meta">— 24 peças · coleção atual</div>
+            {Object.values(collections).map(col => (
+              <div key={col.id} className="pdl-col-card" onClick={() => router.push(`/colecao/${col.id}`)}>
+                <PdlImg tint={col.tint} imageUrl={col.imageUrl} label={`lookbook · ${col.name.join(' ').toLowerCase()}`} />
+                <div className="pdl-col-overlay">
+                  {col.eyebrow && <span className="pdl-col-tag">{col.eyebrow}</span>}
+                  <div>
+                    <div className="pdl-col-name">{col.name[0]}<em>{col.name[1]}</em></div>
+                    {col.count > 0 && <div className="pdl-col-meta">— {col.count} peças · coleção atual</div>}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="pdl-col-card" onClick={() => router.push('/colecao/doce')}>
-              <PdlImg tint="ochre" label="lookbook · doce aventura · meninos 1–12" />
-              <div className="pdl-col-overlay">
-                <span className="pdl-col-tag">meninos · 1–12 anos</span>
-                <div>
-                  <div className="pdl-col-name">Doce<em>Aventura</em></div>
-                  <div className="pdl-col-meta">— 18 peças · coleção atual</div>
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       )}

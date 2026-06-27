@@ -58,6 +58,14 @@ export async function upsertCollectionAction(c: Collection) {
   revalidatePath(`/colecao/${c.id}`);
 }
 
+export async function deleteCollectionAction(id: string) {
+  const supabase = createServiceClient();
+  const { error } = await supabase.from('collections').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+  revalidatePath('/');
+  revalidatePath(`/colecao/${id}`);
+}
+
 export async function upsertHomepageSectionAction(section: HomepageSection) {
   const supabase = createServiceClient();
   const { error } = await supabase.from('homepage_config').upsert({
