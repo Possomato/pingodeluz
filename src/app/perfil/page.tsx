@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import PdlHeader from '@/components/PdlHeader';
 import { IconChevronLeft, IconBag, IconGoogle, IconArrowRight } from '@/components/Icons';
 import { useCart } from '@/context/CartContext';
 import { createBrowserClient } from '@supabase/ssr';
@@ -17,6 +18,7 @@ function PerfilContent() {
   const [scrolled, setScrolled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [showAddrForm, setShowAddrForm] = useState(false);
   const [showEditName, setShowEditName] = useState(false);
@@ -133,14 +135,7 @@ function PerfilContent() {
 
   return (
     <div className="pdl-app">
-      <div className={`pdl-back-bar ${scrolled ? 'solid' : ''}`}>
-        <button onClick={() => router.push('/')} aria-label="Voltar"><IconChevronLeft size={18} /></button>
-        <span className="pdl-back-title">Sua conta</span>
-        <button onClick={() => router.push('/carrinho')} aria-label="Sacola" style={{ position: 'relative' }}>
-          <IconBag size={16} />
-          {cartCount > 0 && <span className="pdl-bag-count">{cartCount}</span>}
-        </button>
-      </div>
+      <PdlHeader scrolled={scrolled} onMenu={() => setShowMenu(!showMenu)} />
 
       <div className="pdl-profile">
         <div className="pdl-profile-hero">
