@@ -335,7 +335,7 @@ function PerfilContent() {
         )}
 
         <div style={{ marginTop: 24, marginBottom: 24, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="pdl-logout" onClick={handleLogout} style={{ marginBottom: 12, margin: '0 auto 12px' }}>sair da conta</div>
+          <div className="pdl-logout" onClick={handleLogout} style={{ display: 'block', width: 'fit-content', margin: '0 auto 12px' }}>sair da conta</div>
           <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 12, color: 'var(--muted)' }}>
             Conta vinculada ao Google
           </div>
