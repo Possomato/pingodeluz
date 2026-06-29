@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import PdlHeader from '@/components/PdlHeader';
 import PdlFooter from '@/components/PdlFooter';
+import PdlImg from '@/components/PdlImg';
 import { IconChevronLeft, IconBag, IconGoogle, IconArrowRight } from '@/components/Icons';
 import { useCart } from '@/context/CartContext';
 import { formatCEP, isValidCEP, fetchCEPData, extractAddressFromCEP } from '@/lib/cep';
@@ -470,72 +471,44 @@ function PerfilContent() {
               Suas peças favoritas aparecerão aqui.
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 16, marginTop: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12, marginTop: 12 }}>
               {favoritedProducts.map(product => (
-                <div key={product.id} style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }}>
-                  {/* Product Image */}
-                  <div
-                    onClick={() => {
-                      const col = product.col.toLowerCase().split(' ')[0];
-                      router.push(`/${col}/${product.id}`);
-                    }}
-                    style={{ position: 'relative', marginBottom: 8, cursor: 'pointer', overflow: 'hidden', borderRadius: 4 }}
-                  >
-                    {product.imageUrl && (
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        style={{ width: '100%', aspectRatio: '1', objectFit: 'cover' }}
-                      />
-                    )}
-
-                    {/* Heart Button - Top Right */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                      }}
-                      onClick={e => {
-                        e.stopPropagation();
-                      }}
-                    >
-                      <HeartButton
-                        productId={product.id}
-                        initialFavorited={true}
-                        onToggle={(newState) => {
-                          if (!newState) {
-                            setFavoritedProductIds(prev => prev.filter(id => id !== product.id));
-                            setFavoritedProducts(prev => prev.filter(p => p.id !== product.id));
-                          }
-                        }}
-                      />
+                <div key={product.id} className="pdl-prod" style={{ position: 'relative', transform: 'scale(0.75)', transformOrigin: 'top left', width: '133%', marginBottom: '-25%' }} onClick={() => {
+                  const col = product.col.toLowerCase().split(' ')[0];
+                  router.push(`/produto/${product.id}`);
+                }}>
+                  <PdlImg tint={product.tint} imageUrl={product.imageUrl} label={product.label} />
+                  <div className="pdl-prod-info">
+                    <div className="pdl-prod-name">{product.name}</div>
+                    <div className="pdl-prod-meta">
+                      <span className="pdl-prod-col">{product.col}</span>
+                      <span className="pdl-prod-price">{product.price?.startsWith('R$') ? product.price : `R$ ${product.price}`}</span>
                     </div>
                   </div>
 
-                  {/* Product Info */}
+                  {/* Heart Button - Top Right */}
                   <div
-                    onClick={() => {
-                      const col = product.col.toLowerCase().split(' ')[0];
-                      router.push(`/${col}/${product.id}`);
+                    style={{
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                      transform: 'scale(1.33)',
+                      transformOrigin: 'top right',
                     }}
-                    style={{ flex: 1 }}
+                    onClick={e => {
+                      e.stopPropagation();
+                    }}
                   >
-                    <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                      {product.col}
-                    </div>
-                    <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, marginBottom: 4, lineHeight: 1.2 }}>
-                      {product.nameParts ? (
-                        <>
-                          {product.nameParts[0]} <em>{product.nameParts[1]}</em>
-                        </>
-                      ) : (
-                        product.name
-                      )}
-                    </div>
-                    <div style={{ fontSize: 12, fontWeight: 500 }}>
-                      {product.price}
-                    </div>
+                    <HeartButton
+                      productId={product.id}
+                      initialFavorited={true}
+                      onToggle={(newState) => {
+                        if (!newState) {
+                          setFavoritedProductIds(prev => prev.filter(id => id !== product.id));
+                          setFavoritedProducts(prev => prev.filter(p => p.id !== product.id));
+                        }
+                      }}
+                    />
                   </div>
                 </div>
               ))}
