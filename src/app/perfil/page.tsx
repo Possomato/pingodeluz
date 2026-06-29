@@ -11,6 +11,7 @@ import { formatCEP, isValidCEP, fetchCEPData, extractAddressFromCEP } from '@/li
 import { createBrowserClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
 import { getAddressesAction, saveAddressAction, deleteAddressAction, type Address } from '@/app/actions/addresses';
+import { getFavoritesAction } from '@/app/actions/favorites';
 
 function PerfilContent() {
   const router = useRouter();
@@ -30,6 +31,7 @@ function PerfilContent() {
   const [validCEP, setValidCEP] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof typeof newAddr, boolean>>>({});
   const [newAddr, setNewAddr] = useState({ label: 'Casa', zip: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' });
+  const [favoritedProductIds, setFavoritedProductIds] = useState<string[]>([]);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -59,6 +61,11 @@ function PerfilContent() {
   useEffect(() => {
     if (!user) return;
     getAddressesAction().then(setAddresses);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    getFavoritesAction().then(setFavoritedProductIds);
   }, [user]);
 
   const handleGoogle = async () => {
@@ -450,7 +457,32 @@ function PerfilContent() {
 
         <div className="pdl-profile-section">
           <h3><span>Meus <em>favoritos</em></span><span className="action">ver todos</span></h3>
-          <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>Suas peças favoritas aparecerão aqui.</div>
+          {favoritedProductIds.length === 0 ? (
+            <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>
+              Suas peças favoritas aparecerão aqui.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12, marginTop: 8 }}>
+              {favoritedProductIds.map(productId => (
+                <div key={productId} style={{ position: 'relative', padding: '8px', background: 'var(--cream-warm)', borderRadius: 6 }}>
+                  <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
+                    Produto: {productId}
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const { toggleFavoriteAction } = await import('@/app/actions/favorites');
+                      await toggleFavoriteAction(productId);
+                      const updated = await getFavoritesAction();
+                      setFavoritedProductIds(updated);
+                    }}
+                    style={{ marginTop: 6, fontSize: 11, color: 'var(--terra)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+                  >
+                    remover
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="pdl-profile-section" style={{ paddingTop: 16 }}>
