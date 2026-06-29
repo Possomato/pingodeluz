@@ -28,6 +28,7 @@ function PerfilContent() {
   const [cepError, setCepError] = useState<string | null>(null);
   const [cepLoading, setCepLoading] = useState(false);
   const [validCEP, setValidCEP] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof typeof newAddr, boolean>>>({});
   const [newAddr, setNewAddr] = useState({ label: 'Casa', zip: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' });
 
   const supabase = createBrowserClient(
@@ -252,9 +253,9 @@ function PerfilContent() {
                 <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Rótulo</div>
                 <input
                   value={newAddr.label}
-                  onChange={e => setNewAddr(prev => ({ ...prev, label: e.target.value }))}
+                  onChange={e => { setNewAddr(prev => ({ ...prev, label: e.target.value })); setValidationErrors(prev => ({ ...prev, label: false })); }}
                   placeholder="Casa, Trabalho, etc"
-                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                  style={{ width: '100%', padding: '8px 10px', border: `2px solid ${validationErrors.label ? 'red' : 'var(--border)'}`, borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
                 />
               </div>
 
@@ -263,7 +264,7 @@ function PerfilContent() {
                 <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>CEP</div>
                 <input
                   value={newAddr.zip}
-                  onChange={e => handleCEPChange(e.target.value)}
+                  onChange={e => { handleCEPChange(e.target.value); setValidationErrors(prev => ({ ...prev, zip: false })); }}
                   onBlur={() => {
                     if (newAddr.zip && !isValidCEP(newAddr.zip)) {
                       setCepError('CEP inválido');
@@ -273,7 +274,7 @@ function PerfilContent() {
                   style={{
                     width: '100%',
                     padding: '8px 10px',
-                    border: `1px solid ${cepError ? 'red' : 'var(--border)'}`,
+                    border: `2px solid ${validationErrors.zip || cepError ? 'red' : 'var(--border)'}`,
                     borderRadius: 6,
                     fontSize: 13,
                     fontFamily: 'var(--sans)',
@@ -288,8 +289,8 @@ function PerfilContent() {
                 <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Logradouro</div>
                 <input
                   value={newAddr.street}
-                  onChange={e => setNewAddr(prev => ({ ...prev, street: e.target.value }))}
-                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                  onChange={e => { setNewAddr(prev => ({ ...prev, street: e.target.value })); setValidationErrors(prev => ({ ...prev, street: false })); }}
+                  style={{ width: '100%', padding: '8px 10px', border: `2px solid ${validationErrors.street ? 'red' : 'var(--border)'}`, borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
                 />
               </div>
 
@@ -298,9 +299,9 @@ function PerfilContent() {
                 <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Número</div>
                 <input
                   value={newAddr.number}
-                  onChange={e => setNewAddr(prev => ({ ...prev, number: e.target.value }))}
+                  onChange={e => { setNewAddr(prev => ({ ...prev, number: e.target.value })); setValidationErrors(prev => ({ ...prev, number: false })); }}
                   placeholder="Ex: 123"
-                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                  style={{ width: '100%', padding: '8px 10px', border: `2px solid ${validationErrors.number ? 'red' : 'var(--border)'}`, borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
                 />
               </div>
 
@@ -320,8 +321,8 @@ function PerfilContent() {
                 <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Bairro</div>
                 <input
                   value={newAddr.neighborhood}
-                  onChange={e => setNewAddr(prev => ({ ...prev, neighborhood: e.target.value }))}
-                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                  onChange={e => { setNewAddr(prev => ({ ...prev, neighborhood: e.target.value })); setValidationErrors(prev => ({ ...prev, neighborhood: false })); }}
+                  style={{ width: '100%', padding: '8px 10px', border: `2px solid ${validationErrors.neighborhood ? 'red' : 'var(--border)'}`, borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
                 />
               </div>
 
@@ -330,8 +331,8 @@ function PerfilContent() {
                 <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Cidade</div>
                 <input
                   value={newAddr.city}
-                  onChange={e => setNewAddr(prev => ({ ...prev, city: e.target.value }))}
-                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                  onChange={e => { setNewAddr(prev => ({ ...prev, city: e.target.value })); setValidationErrors(prev => ({ ...prev, city: false })); }}
+                  style={{ width: '100%', padding: '8px 10px', border: `2px solid ${validationErrors.city ? 'red' : 'var(--border)'}`, borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
                 />
               </div>
 
@@ -340,8 +341,8 @@ function PerfilContent() {
                 <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Estado</div>
                 <select
                   value={newAddr.state}
-                  onChange={e => setNewAddr(prev => ({ ...prev, state: e.target.value }))}
-                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                  onChange={e => { setNewAddr(prev => ({ ...prev, state: e.target.value })); setValidationErrors(prev => ({ ...prev, state: false })); }}
+                  style={{ width: '100%', padding: '8px 10px', border: `2px solid ${validationErrors.state ? 'red' : 'var(--border)'}`, borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
                 >
                   <option value="">Selecione um estado</option>
                   <option value="AC">Acre</option>
@@ -378,12 +379,25 @@ function PerfilContent() {
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                 <button
                   onClick={async () => {
-                    console.log('💾 Salvando endereço...', newAddr);
-                    if (!validCEP || cepError) {
-                      console.log('❌ CEP inválido no save:', { validCEP, cepError });
-                      setCepError('CEP inválido');
+                    console.log('💾 Validando endereço...', newAddr);
+                    const errors: Partial<Record<keyof typeof newAddr, boolean>> = {};
+
+                    // Validar campos obrigatórios
+                    if (!newAddr.label.trim()) errors.label = true;
+                    if (!newAddr.zip.trim() || cepError) errors.zip = true;
+                    if (!newAddr.street.trim()) errors.street = true;
+                    if (!newAddr.number.trim()) errors.number = true;
+                    if (!newAddr.neighborhood.trim()) errors.neighborhood = true;
+                    if (!newAddr.city.trim()) errors.city = true;
+                    if (!newAddr.state.trim()) errors.state = true;
+
+                    if (Object.keys(errors).length > 0) {
+                      console.log('❌ Campos faltando:', errors);
+                      setValidationErrors(errors);
                       return;
                     }
+
+                    setValidationErrors({});
                     try {
                       console.log('📤 Chamando saveAddressAction:', newAddr);
                       await saveAddressAction(newAddr);
@@ -402,17 +416,16 @@ function PerfilContent() {
                       console.error('❌ Erro ao salvar:', error);
                     }
                   }}
-                  disabled={!validCEP || !!cepError || !newAddr.label || !newAddr.street || !newAddr.number || !newAddr.neighborhood || !newAddr.city || !newAddr.state}
                   style={{
                     padding: '10px 16px',
-                    background: !validCEP || cepError ? '#ccc' : 'var(--ink)',
+                    background: 'var(--ink)',
                     color: '#fff',
                     borderRadius: 999,
                     fontSize: 12,
                     fontWeight: 600,
                     fontFamily: 'var(--sans)',
                     border: 'none',
-                    cursor: !validCEP || cepError ? 'not-allowed' : 'pointer',
+                    cursor: 'pointer',
                   }}>
                   Salvar endereço
                 </button>
