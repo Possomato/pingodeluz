@@ -7,6 +7,7 @@ import PdlHeader from '@/components/PdlHeader';
 import PdlFooter from '@/components/PdlFooter';
 import { IconChevronLeft, IconBag, IconGoogle, IconArrowRight } from '@/components/Icons';
 import { useCart } from '@/context/CartContext';
+import { formatCEP, isValidCEP, fetchCEPData, extractAddressFromCEP } from '@/lib/cep';
 import { createBrowserClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
 import { getAddressesAction, saveAddressAction, deleteAddressAction, type Address } from '@/app/actions/addresses';
@@ -24,7 +25,10 @@ function PerfilContent() {
   const [showAddrForm, setShowAddrForm] = useState(false);
   const [showEditName, setShowEditName] = useState(false);
   const [editingName, setEditingName] = useState('');
-  const [newAddr, setNewAddr] = useState({ label: 'Casa', zip: '', street: '', complement: '', neighborhood: '', city: '', state: '' });
+  const [cepError, setCepError] = useState<string | null>(null);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [validCEP, setValidCEP] = useState<string | null>(null);
+  const [newAddr, setNewAddr] = useState({ label: 'Casa', zip: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' });
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -71,6 +75,39 @@ function PerfilContent() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
+  };
+
+  const handleCEPChange = async (value: string) => {
+    const formatted = formatCEP(value);
+    setNewAddr(prev => ({ ...prev, zip: formatted }));
+    setCepError(null);
+    setValidCEP(null);
+
+    if (!isValidCEP(formatted)) {
+      if (formatted.length === 8 || (formatted.length === 9 && formatted.includes('-'))) {
+        setCepError('CEP inválido');
+      }
+      return;
+    }
+
+    setCepLoading(true);
+    const data = await fetchCEPData(formatted);
+    setCepLoading(false);
+
+    if (!data) {
+      setCepError('CEP não encontrado');
+      return;
+    }
+
+    const extracted = extractAddressFromCEP(data);
+    setNewAddr(prev => ({
+      ...prev,
+      street: extracted.street,
+      neighborhood: extracted.neighborhood,
+      city: extracted.city,
+      state: extracted.state,
+    }));
+    setValidCEP(formatted);
   };
 
   if (loading) {
@@ -181,7 +218,7 @@ function PerfilContent() {
             <div key={a.id} style={{ marginBottom: 12, padding: '12px 14px', background: 'var(--cream-warm)', borderRadius: 6 }}>
               <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.05 }}>{a.label}</div>
               <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 }}>
-                {a.street}{a.complement ? `, ${a.complement}` : ''}<br />
+                {a.street}, {a.number}{a.complement ? ` - ${a.complement}` : ''}<br />
                 {a.neighborhood} · {a.city}/{a.state} · {a.zip}
               </div>
               <button
@@ -205,32 +242,144 @@ function PerfilContent() {
 
           {showAddrForm && (
             <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {(['label', 'zip', 'street', 'complement', 'neighborhood', 'city', 'state'] as const).map(field => (
-                <div key={field}>
-                  <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>{field}</div>
-                  <input
-                    value={newAddr[field]}
-                    onChange={e => setNewAddr(prev => ({ ...prev, [field]: e.target.value }))}
-                    style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
-                  />
-                </div>
-              ))}
+              {/* Rótulo */}
+              <div>
+                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Rótulo</div>
+                <input
+                  value={newAddr.label}
+                  onChange={e => setNewAddr(prev => ({ ...prev, label: e.target.value }))}
+                  placeholder="Casa, Trabalho, etc"
+                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                />
+              </div>
+
+              {/* CEP */}
+              <div>
+                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>CEP</div>
+                <input
+                  value={newAddr.zip}
+                  onChange={e => handleCEPChange(e.target.value)}
+                  onBlur={() => {
+                    if (newAddr.zip && !isValidCEP(newAddr.zip)) {
+                      setCepError('CEP inválido');
+                    }
+                  }}
+                  placeholder="00000-000"
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    border: `1px solid ${cepError ? 'red' : 'var(--border)'}`,
+                    borderRadius: 6,
+                    fontSize: 13,
+                    fontFamily: 'var(--sans)',
+                  }}
+                />
+                {cepLoading && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Buscando...</div>}
+                {cepError && <div style={{ fontSize: 12, color: 'red', marginTop: 4 }}>{cepError}</div>}
+              </div>
+
+              {/* Logradouro */}
+              <div>
+                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Logradouro</div>
+                <input
+                  value={newAddr.street}
+                  onChange={e => setNewAddr(prev => ({ ...prev, street: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                />
+              </div>
+
+              {/* Número */}
+              <div>
+                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Número</div>
+                <input
+                  value={newAddr.number}
+                  onChange={e => setNewAddr(prev => ({ ...prev, number: e.target.value }))}
+                  placeholder="Ex: 123"
+                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                />
+              </div>
+
+              {/* Complemento */}
+              <div>
+                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Complemento (opcional)</div>
+                <input
+                  value={newAddr.complement}
+                  onChange={e => setNewAddr(prev => ({ ...prev, complement: e.target.value }))}
+                  placeholder="Apto, Sala, etc"
+                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                />
+              </div>
+
+              {/* Bairro */}
+              <div>
+                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Bairro</div>
+                <input
+                  value={newAddr.neighborhood}
+                  onChange={e => setNewAddr(prev => ({ ...prev, neighborhood: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                />
+              </div>
+
+              {/* Cidade */}
+              <div>
+                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Cidade</div>
+                <input
+                  value={newAddr.city}
+                  onChange={e => setNewAddr(prev => ({ ...prev, city: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                />
+              </div>
+
+              {/* Estado */}
+              <div>
+                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Estado (sigla)</div>
+                <input
+                  value={newAddr.state}
+                  onChange={e => setNewAddr(prev => ({ ...prev, state: e.target.value.toUpperCase() }))}
+                  placeholder="SP"
+                  maxLength={2}
+                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
+                />
+              </div>
+
+              {/* Buttons */}
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                 <button
                   onClick={async () => {
+                    if (!validCEP || cepError) {
+                      setCepError('CEP inválido');
+                      return;
+                    }
                     await saveAddressAction(newAddr);
                     const updated = await getAddressesAction();
                     setAddresses(updated);
                     setShowAddrForm(false);
-                    setNewAddr({ label: 'Casa', zip: '', street: '', complement: '', neighborhood: '', city: '', state: '' });
+                    setNewAddr({ label: 'Casa', zip: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' });
+                    setCepError(null);
+                    setValidCEP(null);
                   }}
-                  style={{ padding: '10px 16px', background: 'var(--ink)', color: 'var(--cream-warm)', borderRadius: 999, fontSize: 12, fontWeight: 600, fontFamily: 'var(--sans)', border: 'none', cursor: 'pointer' }}>
-                  salvar endereço
+                  disabled={!validCEP || !!cepError}
+                  style={{
+                    padding: '10px 16px',
+                    background: !validCEP || cepError ? '#ccc' : 'var(--ink)',
+                    color: '#fff',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    fontFamily: 'var(--sans)',
+                    border: 'none',
+                    cursor: !validCEP || cepError ? 'not-allowed' : 'pointer',
+                  }}>
+                  Salvar endereço
                 </button>
                 <button
-                  onClick={() => setShowAddrForm(false)}
+                  onClick={() => {
+                    setShowAddrForm(false);
+                    setCepError(null);
+                    setValidCEP(null);
+                  }}
                   style={{ padding: '10px 16px', background: 'none', color: 'var(--muted)', borderRadius: 999, fontSize: 12, border: '1px solid var(--border)', cursor: 'pointer' }}>
-                  cancelar
+                  Cancelar
                 </button>
               </div>
             </div>
