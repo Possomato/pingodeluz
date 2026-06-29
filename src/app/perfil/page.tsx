@@ -12,6 +12,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
 import { getAddressesAction, saveAddressAction, deleteAddressAction, type Address } from '@/app/actions/addresses';
 import { getFavoritesAction } from '@/app/actions/favorites';
+import HeartButton from '@/components/HeartButton';
 
 function PerfilContent() {
   const router = useRouter();
@@ -483,6 +484,14 @@ function PerfilContent() {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="pdl-profile-section">
+          <h3><span>Teste de <em>favoritos</em></span></h3>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <HeartButton productId="test-product-1" initialFavorited={false} />
+            <span style={{ fontSize: 12, color: 'var(--muted)' }}>Clique no coração para testar</span>
+          </div>
         </div>
 
         <div className="pdl-profile-section" style={{ paddingTop: 16 }}>
