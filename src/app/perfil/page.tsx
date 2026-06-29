@@ -71,8 +71,14 @@ function PerfilContent() {
   useEffect(() => {
     if (!user) return;
     getFavoritesAction().then(ids => {
+      console.log('📌 Favoritos carregados:', ids);
       setFavoritedProductIds(ids);
-      const products = ids.map(id => getProductById(id));
+      const products = ids.map(id => {
+        const product = getProductById(id);
+        console.log(`📦 Produto ${id}:`, product?.name);
+        return product;
+      });
+      console.log('📦 Produtos carregados:', products);
       setFavoritedProducts(products);
     });
   }, [user]);
