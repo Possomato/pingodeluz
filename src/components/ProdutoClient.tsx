@@ -10,6 +10,8 @@ import { IconChevronDown, IconArrowRight } from '@/components/Icons';
 import { TABELA_MEDIDAS, SIZES_MENINAS, fetchCatalog, calcInstallments } from '@/lib/data';
 import type { Product, SizeTable, PaymentConfig } from '@/lib/data';
 import { useCart } from '@/context/CartContext';
+import HeartButton from '@/components/HeartButton';
+import { isFavoritedAction } from '@/app/actions/favorites';
 
 function formatSize(s: string): string {
   if (s.endsWith('m')) {
@@ -44,6 +46,8 @@ export default function ProdutoClient({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [relIdx, setRelIdx] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favLoading, setFavLoading] = useState(true);
 
   const imgs = p.imageUrls?.length ? p.imageUrls : (p.imageUrl ? [p.imageUrl] : []);
   const labels = p.galleryLabels?.length === imgs.length ? p.galleryLabels : imgs.map((_, i) => `foto ${i + 1}`);
@@ -57,6 +61,16 @@ export default function ProdutoClient({
     fetchCatalog().then(all => {
       setRelated(all.filter(r => r.id !== id).slice(0, 4));
     }).catch(() => {});
+  }, [id]);
+
+  useEffect(() => {
+    const checkFavorite = async () => {
+      setFavLoading(true);
+      const result = await isFavoritedAction(id);
+      setIsFavorited(result);
+      setFavLoading(false);
+    };
+    checkFavorite();
   }, [id]);
 
   useEffect(() => {
@@ -160,8 +174,11 @@ export default function ProdutoClient({
         <div className="pdl-prodpage-right">
           <div className="pdl-prodpage-info">
             <div className="pdl-prodpage-eyebrow">{p.col}</div>
-            <div className="pdl-prodpage-title">
-              {nameParts[0]} <em>{nameParts[1]}</em>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div className="pdl-prodpage-title">
+                {nameParts[0]} <em>{nameParts[1]}</em>
+              </div>
+              {!favLoading && <HeartButton productId={id} initialFavorited={isFavorited} />}
             </div>
             <div className="pdl-prodpage-price">
               <span className="now">{p.price}</span>
