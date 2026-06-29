@@ -78,27 +78,32 @@ function PerfilContent() {
   };
 
   const handleCEPChange = async (value: string) => {
+    console.log('🔍 CEP change:', value);
     const formatted = formatCEP(value);
     setNewAddr(prev => ({ ...prev, zip: formatted }));
     setCepError(null);
     setValidCEP(null);
 
     if (!isValidCEP(formatted)) {
+      console.log('❌ CEP inválido:', formatted);
       if (formatted.length === 8 || (formatted.length === 9 && formatted.includes('-'))) {
         setCepError('CEP inválido');
       }
       return;
     }
 
+    console.log('✅ CEP válido:', formatted);
     setCepLoading(true);
     const data = await fetchCEPData(formatted);
     setCepLoading(false);
 
     if (!data) {
+      console.log('❌ CEP não encontrado');
       setCepError('CEP não encontrado');
       return;
     }
 
+    console.log('📍 Dados encontrados:', data);
     const extracted = extractAddressFromCEP(data);
     setNewAddr(prev => ({
       ...prev,
@@ -373,17 +378,29 @@ function PerfilContent() {
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                 <button
                   onClick={async () => {
+                    console.log('💾 Salvando endereço...', newAddr);
                     if (!validCEP || cepError) {
+                      console.log('❌ CEP inválido no save:', { validCEP, cepError });
                       setCepError('CEP inválido');
                       return;
                     }
-                    await saveAddressAction(newAddr);
-                    const updated = await getAddressesAction();
-                    setAddresses(updated);
-                    setShowAddrForm(false);
-                    setNewAddr({ label: 'Casa', zip: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' });
-                    setCepError(null);
-                    setValidCEP(null);
+                    try {
+                      console.log('📤 Chamando saveAddressAction:', newAddr);
+                      await saveAddressAction(newAddr);
+                      console.log('✅ Endereço salvo');
+
+                      console.log('📥 Recuperando endereços...');
+                      const updated = await getAddressesAction();
+                      console.log('✅ Endereços recuperados:', updated);
+
+                      setAddresses(updated);
+                      setShowAddrForm(false);
+                      setNewAddr({ label: 'Casa', zip: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' });
+                      setCepError(null);
+                      setValidCEP(null);
+                    } catch (error) {
+                      console.error('❌ Erro ao salvar:', error);
+                    }
                   }}
                   disabled={!validCEP || !!cepError}
                   style={{
