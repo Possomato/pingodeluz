@@ -402,7 +402,7 @@ function PerfilContent() {
                       console.error('❌ Erro ao salvar:', error);
                     }
                   }}
-                  disabled={!validCEP || !!cepError}
+                  disabled={!validCEP || !!cepError || !newAddr.label || !newAddr.street || !newAddr.number || !newAddr.neighborhood || !newAddr.city || !newAddr.state}
                   style={{
                     padding: '10px 16px',
                     background: !validCEP || cepError ? '#ccc' : 'var(--ink)',
