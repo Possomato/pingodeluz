@@ -6,12 +6,13 @@ import { revalidatePath } from 'next/cache';
 export interface Address {
   id: string;
   label: string;
+  zip: string;
   street: string;
+  number: string;
   complement?: string;
   neighborhood: string;
   city: string;
   state: string;
-  zip: string;
 }
 
 export async function getAddressesAction(): Promise<Address[]> {
