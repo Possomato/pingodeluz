@@ -13,6 +13,8 @@ import type { User } from '@supabase/supabase-js';
 import { getAddressesAction, saveAddressAction, deleteAddressAction, type Address } from '@/app/actions/addresses';
 import { getFavoritesAction } from '@/app/actions/favorites';
 import HeartButton from '@/components/HeartButton';
+import { getProductById } from '@/lib/data';
+import type { Product } from '@/lib/data';
 
 function PerfilContent() {
   const router = useRouter();
@@ -33,6 +35,7 @@ function PerfilContent() {
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof typeof newAddr, boolean>>>({});
   const [newAddr, setNewAddr] = useState({ label: 'Casa', zip: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' });
   const [favoritedProductIds, setFavoritedProductIds] = useState<string[]>([]);
+  const [favoritedProducts, setFavoritedProducts] = useState<Product[]>([]);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -66,7 +69,11 @@ function PerfilContent() {
 
   useEffect(() => {
     if (!user) return;
-    getFavoritesAction().then(setFavoritedProductIds);
+    getFavoritesAction().then(ids => {
+      setFavoritedProductIds(ids);
+      const products = ids.map(id => getProductById(id));
+      setFavoritedProducts(products);
+    });
   }, [user]);
 
   const handleGoogle = async () => {
@@ -458,40 +465,82 @@ function PerfilContent() {
 
         <div className="pdl-profile-section">
           <h3><span>Meus <em>favoritos</em></span><span className="action">ver todos</span></h3>
-          {favoritedProductIds.length === 0 ? (
+          {favoritedProducts.length === 0 ? (
             <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>
               Suas peças favoritas aparecerão aqui.
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12, marginTop: 8 }}>
-              {favoritedProductIds.map(productId => (
-                <div key={productId} style={{ position: 'relative', padding: '8px', background: 'var(--cream-warm)', borderRadius: 6 }}>
-                  <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
-                    Produto: {productId}
-                  </div>
-                  <button
-                    onClick={async () => {
-                      const { toggleFavoriteAction } = await import('@/app/actions/favorites');
-                      await toggleFavoriteAction(productId);
-                      const updated = await getFavoritesAction();
-                      setFavoritedProductIds(updated);
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 16, marginTop: 12 }}>
+              {favoritedProducts.map(product => (
+                <div key={product.id} style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }}>
+                  {/* Product Image */}
+                  <div
+                    onClick={() => {
+                      const col = product.col.toLowerCase().split(' ')[0];
+                      router.push(`/${col}/${product.id}`);
                     }}
-                    style={{ marginTop: 6, fontSize: 11, color: 'var(--terra)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}
+                    style={{ position: 'relative', marginBottom: 8, cursor: 'pointer', overflow: 'hidden', borderRadius: 4 }}
                   >
-                    remover
-                  </button>
+                    {product.imageUrl && (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        style={{ width: '100%', aspectRatio: '1', objectFit: 'cover' }}
+                      />
+                    )}
+
+                    {/* Heart Button - Top Right */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                      }}
+                      onClick={e => {
+                        e.stopPropagation();
+                      }}
+                    >
+                      <HeartButton
+                        productId={product.id}
+                        initialFavorited={true}
+                        onToggle={(newState) => {
+                          if (!newState) {
+                            setFavoritedProductIds(prev => prev.filter(id => id !== product.id));
+                            setFavoritedProducts(prev => prev.filter(p => p.id !== product.id));
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Product Info */}
+                  <div
+                    onClick={() => {
+                      const col = product.col.toLowerCase().split(' ')[0];
+                      router.push(`/${col}/${product.id}`);
+                    }}
+                    style={{ flex: 1 }}
+                  >
+                    <div style={{ fontSize: 11, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+                      {product.col}
+                    </div>
+                    <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, marginBottom: 4, lineHeight: 1.2 }}>
+                      {product.nameParts ? (
+                        <>
+                          {product.nameParts[0]} <em>{product.nameParts[1]}</em>
+                        </>
+                      ) : (
+                        product.name
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 500 }}>
+                      {product.price}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
-
-        <div className="pdl-profile-section">
-          <h3><span>Teste de <em>favoritos</em></span></h3>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <HeartButton productId="test-product-1" initialFavorited={false} />
-            <span style={{ fontSize: 12, color: 'var(--muted)' }}>Clique no coração para testar</span>
-          </div>
         </div>
 
         <div className="pdl-profile-section" style={{ paddingTop: 16 }}>

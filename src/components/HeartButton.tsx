@@ -7,9 +7,10 @@ import { toggleFavoriteAction } from '@/app/actions/favorites';
 interface HeartButtonProps {
   productId: string;
   initialFavorited: boolean;
+  onToggle?: (newState: boolean) => void;
 }
 
-export default function HeartButton({ productId, initialFavorited }: HeartButtonProps) {
+export default function HeartButton({ productId, initialFavorited, onToggle }: HeartButtonProps) {
   const [isFavorited, setIsFavorited] = useState(initialFavorited);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -22,6 +23,7 @@ export default function HeartButton({ productId, initialFavorited }: HeartButton
     try {
       const result = await toggleFavoriteAction(productId);
       setIsFavorited(result);
+      onToggle?.(result);
     } catch (error) {
       if (error instanceof Error && error.message === 'Not authenticated') {
         router.push('/perfil');
