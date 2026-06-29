@@ -35,30 +35,18 @@ export async function getAddressesAction(): Promise<Address[]> {
 }
 
 export async function saveAddressAction(address: Omit<Address, 'id'> & { id?: string }) {
-  console.log('[SERVER] saveAddressAction called with:', address);
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  console.log('[SERVER] Current user:', user?.id);
 
-  if (!user) {
-    console.error('[SERVER] Not authenticated');
-    throw new Error('Not authenticated');
-  }
+  if (!user) throw new Error('Not authenticated');
 
   const service = createServiceClient();
   try {
     if (address.id) {
-      console.log('[SERVER] Updating address:', address.id);
-      const result = await service.from('addresses').update({ ...address }).eq('id', address.id).eq('user_id', user.id);
-      console.log('[SERVER] Update result:', result);
+      await service.from('addresses').update({ ...address }).eq('id', address.id).eq('user_id', user.id);
     } else {
-      console.log('[SERVER] Inserting new address');
-      const insertData = { ...address, user_id: user.id };
-      console.log('[SERVER] Insert data:', insertData);
-      const result = await service.from('addresses').insert([insertData]);
-      console.log('[SERVER] Insert result:', result);
+      await service.from('addresses').insert([{ ...address, user_id: user.id }]);
     }
-    console.log('[SERVER] Revalidating path /perfil');
     revalidatePath('/perfil');
   } catch (error) {
     console.error('[SERVER] Error saving address:', error);
