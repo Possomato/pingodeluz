@@ -1,6 +1,6 @@
 'use server';
 
-import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { revalidatePath } from 'next/cache';
 
 export interface Address {
@@ -15,50 +15,72 @@ export interface Address {
   state: string;
 }
 
+/**
+ * Endereços do cliente. Tudo aqui usa o client com sessão: a policy
+ * "own addresses" garante que ninguém veja nem altere endereço alheio,
+ * então não há motivo para recorrer ao service role.
+ */
 export async function getAddressesAction(): Promise<Address[]> {
-  console.log('[SERVER] getAddressesAction called');
   const supabase = await createServerSupabaseClient();
+
   const { data: { user } } = await supabase.auth.getUser();
-  console.log('[SERVER] User:', user?.id);
-  if (!user) {
-    console.log('[SERVER] No user found');
-    return [];
-  }
+  if (!user) return [];
+
   const { data, error } = await supabase
     .from('addresses')
     .select('*')
     .eq('user_id', user.id)
     .order('created_at');
 
-  console.log('[SERVER] Query result:', { data, error });
+  if (error) throw new Error(`Falha ao carregar endereços: ${error.message}`);
   return (data ?? []) as Address[];
 }
 
-export async function saveAddressAction(address: Omit<Address, 'id'> & { id?: string }) {
+export async function saveAddressAction(
+  address: Omit<Address, 'id'> & { id?: string }
+): Promise<Address> {
   const supabase = await createServerSupabaseClient();
+
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('NAO_AUTENTICADO');
 
-  if (!user) throw new Error('Not authenticated');
+  const row = {
+    label: address.label,
+    zip: address.zip,
+    street: address.street,
+    number: address.number,
+    complement: address.complement ?? '',
+    neighborhood: address.neighborhood,
+    city: address.city,
+    state: address.state,
+  };
 
-  const service = createServiceClient();
-  try {
-    if (address.id) {
-      await service.from('addresses').update({ ...address }).eq('id', address.id).eq('user_id', user.id);
-    } else {
-      await service.from('addresses').insert([{ ...address, user_id: user.id }]);
-    }
-    revalidatePath('/perfil');
-  } catch (error) {
-    console.error('[SERVER] Error saving address:', error);
-    throw error;
-  }
+  const query = address.id
+    ? supabase.from('addresses').update(row).eq('id', address.id).eq('user_id', user.id)
+    : supabase.from('addresses').insert({ ...row, user_id: user.id });
+
+  const { data, error } = await query.select().single();
+  if (error) throw new Error(`Falha ao salvar endereço: ${error.message}`);
+
+  revalidatePath('/perfil');
+  revalidatePath('/checkout');
+  return data as Address;
 }
 
 export async function deleteAddressAction(id: string) {
   const supabase = await createServerSupabaseClient();
+
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-  const service = createServiceClient();
-  await service.from('addresses').delete().eq('id', id).eq('user_id', user.id);
+  if (!user) throw new Error('NAO_AUTENTICADO');
+
+  const { error } = await supabase
+    .from('addresses')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (error) throw new Error(`Falha ao excluir endereço: ${error.message}`);
+
   revalidatePath('/perfil');
+  revalidatePath('/checkout');
 }

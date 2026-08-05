@@ -12,10 +12,22 @@ import { formatCEP, isValidCEP, fetchCEPData, extractAddressFromCEP } from '@/li
 import { createBrowserClient } from '@supabase/ssr';
 import type { User } from '@supabase/supabase-js';
 import { getAddressesAction, saveAddressAction, deleteAddressAction, type Address } from '@/app/actions/addresses';
-import { getFavoritesAction } from '@/app/actions/favorites';
+import { formatCentavos } from '@/lib/money';
+import { getFavoriteProductsAction } from '@/app/actions/favorites';
+import { getMyOrdersAction, type Order } from '@/app/actions/orders';
 import HeartButton from '@/components/HeartButton';
-import { getProductById } from '@/lib/data';
 import type { Product } from '@/lib/data';
+
+/** Status do banco → rótulo em português e classe do chip. */
+const ORDER_STATUS: Record<string, { label: string; kind: string }> = {
+  pendente: { label: 'aguardando pagamento', kind: 'pendente' },
+  pago: { label: 'pagamento confirmado', kind: 'pago' },
+  enviado: { label: 'em trânsito', kind: 'transit' },
+  entregue: { label: 'entregue', kind: 'entregue' },
+  cancelado: { label: 'cancelado', kind: 'cancelado' },
+  recusado: { label: 'pagamento recusado', kind: 'cancelado' },
+  reembolsado: { label: 'reembolsado', kind: 'cancelado' },
+};
 
 function PerfilContent() {
   const router = useRouter();
@@ -32,11 +44,11 @@ function PerfilContent() {
   const [editingName, setEditingName] = useState('');
   const [cepError, setCepError] = useState<string | null>(null);
   const [cepLoading, setCepLoading] = useState(false);
-  const [validCEP, setValidCEP] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof typeof newAddr, boolean>>>({});
   const [newAddr, setNewAddr] = useState({ label: 'Casa', zip: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' });
-  const [favoritedProductIds, setFavoritedProductIds] = useState<string[]>([]);
   const [favoritedProducts, setFavoritedProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -70,17 +82,17 @@ function PerfilContent() {
 
   useEffect(() => {
     if (!user) return;
-    getFavoritesAction().then(ids => {
-      console.log('📌 Favoritos carregados:', ids);
-      setFavoritedProductIds(ids);
-      const products = ids.map(id => {
-        const product = getProductById(id);
-        console.log(`📦 Produto ${id}:`, product?.name);
-        return product;
-      });
-      console.log('📦 Produtos carregados:', products);
-      setFavoritedProducts(products);
-    });
+    getFavoriteProductsAction()
+      .then(setFavoritedProducts)
+      .catch(() => setFavoritedProducts([]));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    getMyOrdersAction()
+      .then(setOrders)
+      .catch(() => setOrders([]))
+      .finally(() => setOrdersLoading(false));
   }, [user]);
 
   const handleGoogle = async () => {
@@ -101,32 +113,24 @@ function PerfilContent() {
   };
 
   const handleCEPChange = async (value: string) => {
-    console.log('🔍 CEP change:', value);
     const formatted = formatCEP(value);
     setNewAddr(prev => ({ ...prev, zip: formatted }));
     setCepError(null);
-    setValidCEP(null);
 
     if (!isValidCEP(formatted)) {
-      console.log('❌ CEP inválido:', formatted);
       if (formatted.length === 8 || (formatted.length === 9 && formatted.includes('-'))) {
         setCepError('CEP inválido');
       }
       return;
     }
-
-    console.log('✅ CEP válido:', formatted);
     setCepLoading(true);
     const data = await fetchCEPData(formatted);
     setCepLoading(false);
 
     if (!data) {
-      console.log('❌ CEP não encontrado');
       setCepError('CEP não encontrado');
       return;
     }
-
-    console.log('📍 Dados encontrados:', data);
     const extracted = extractAddressFromCEP(data);
     setNewAddr(prev => ({
       ...prev,
@@ -135,7 +139,6 @@ function PerfilContent() {
       city: extracted.city,
       state: extracted.state,
     }));
-    setValidCEP(formatted);
   };
 
   if (loading) {
@@ -401,7 +404,6 @@ function PerfilContent() {
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                 <button
                   onClick={async () => {
-                    console.log('💾 Validando endereço...', newAddr);
                     const errors: Partial<Record<keyof typeof newAddr, boolean>> = {};
 
                     // Validar campos obrigatórios
@@ -414,26 +416,19 @@ function PerfilContent() {
                     if (!newAddr.state.trim()) errors.state = true;
 
                     if (Object.keys(errors).length > 0) {
-                      console.log('❌ Campos faltando:', errors);
                       setValidationErrors(errors);
                       return;
                     }
 
                     setValidationErrors({});
                     try {
-                      console.log('📤 Chamando saveAddressAction:', newAddr);
                       await saveAddressAction(newAddr);
-                      console.log('✅ Endereço salvo');
-
-                      console.log('📥 Recuperando endereços...');
                       const updated = await getAddressesAction();
-                      console.log('✅ Endereços recuperados:', updated);
 
                       setAddresses(updated);
                       setShowAddrForm(false);
                       setNewAddr({ label: 'Casa', zip: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' });
                       setCepError(null);
-                      setValidCEP(null);
                     } catch (error) {
                       console.error('❌ Erro ao salvar:', error);
                     }
@@ -455,7 +450,6 @@ function PerfilContent() {
                   onClick={() => {
                     setShowAddrForm(false);
                     setCepError(null);
-                    setValidCEP(null);
                   }}
                   style={{ padding: '10px 16px', background: 'none', color: 'var(--muted)', borderRadius: 999, fontSize: 12, border: '1px solid var(--border)', cursor: 'pointer' }}>
                   Cancelar
@@ -466,12 +460,49 @@ function PerfilContent() {
         </div>
 
         <div className="pdl-profile-section">
-          <h3><span>Meus <em>pedidos</em></span><span className="action">ver todos</span></h3>
-          <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>Seus pedidos aparecerão aqui.</div>
+          <h3><span>Meus <em>pedidos</em></span></h3>
+          {ordersLoading ? (
+            <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>
+              Carregando…
+            </div>
+          ) : orders.length === 0 ? (
+            <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>
+              Você ainda não fez nenhum pedido.
+            </div>
+          ) : (
+            <div className="pdl-orders">
+              {orders.map(order => (
+                <button
+                  key={order.id}
+                  className="pdl-order"
+                  onClick={() => router.push(`/pedido/${order.id}`)}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', border: '1px solid var(--border)', borderRadius: 3, padding: '12px 14px', marginBottom: 8, background: 'transparent', cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 12 }}>{order.orderNumber}</span>
+                    <span className={`pdl-order-status ${ORDER_STATUS[order.status]?.kind ?? ''}`} style={{ fontSize: 11 }}>
+                      {ORDER_STATUS[order.status]?.label ?? order.status}
+                    </span>
+                  </div>
+                  <div style={{ fontFamily: 'var(--editorial)', fontSize: 13, color: 'var(--ink-soft)', marginTop: 4 }}>
+                    {order.items.map(i => i.name).join(' + ') || 'Pedido'}
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 12, color: 'var(--muted)' }}>
+                    <span>
+                      {new Date(order.createdAt).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                      {' · '}
+                      {order.items.reduce((n, i) => n + i.qty, 0)} {order.items.reduce((n, i) => n + i.qty, 0) === 1 ? 'peça' : 'peças'}
+                    </span>
+                    <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{formatCentavos(order.totalCentavos)}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="pdl-profile-section">
-          <h3><span>Meus <em>favoritos</em></span><span className="action">ver todos</span></h3>
+          <h3><span>Meus <em>favoritos</em></span></h3>
           {favoritedProducts.length === 0 ? (
             <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>
               Suas peças favoritas aparecerão aqui.
@@ -488,7 +519,7 @@ function PerfilContent() {
                     <div className="pdl-prod-name">{product.name}</div>
                     <div className="pdl-prod-meta">
                       <span className="pdl-prod-col">{product.col}</span>
-                      <span className="pdl-prod-price">{product.price?.startsWith('R$') ? product.price : `R$ ${product.price}`}</span>
+                      <span className="pdl-prod-price">{formatCentavos(product.priceCentavos)}</span>
                     </div>
                   </div>
 
@@ -509,8 +540,8 @@ function PerfilContent() {
                       productId={product.id}
                       initialFavorited={true}
                       onToggle={(newState) => {
+                        // Desfavoritar tira o card da lista na hora.
                         if (!newState) {
-                          setFavoritedProductIds(prev => prev.filter(id => id !== product.id));
                           setFavoritedProducts(prev => prev.filter(p => p.id !== product.id));
                         }
                       }}

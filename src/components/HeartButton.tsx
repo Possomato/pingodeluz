@@ -18,16 +18,13 @@ export default function HeartButton({ productId, initialFavorited, onToggle }: H
   const handleToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    console.log('❤️ Toggling favorite for productId:', productId);
     setIsLoading(true);
     try {
       const result = await toggleFavoriteAction(productId);
-      console.log('✅ Favorite toggled. New state:', result);
       setIsFavorited(result);
       onToggle?.(result);
     } catch (error) {
-      if (error instanceof Error && error.message === 'Not authenticated') {
+      if (error instanceof Error && error.message === 'NAO_AUTENTICADO') {
         router.push('/perfil');
       } else {
         console.error('Error toggling favorite:', error);
