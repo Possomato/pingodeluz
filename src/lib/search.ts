@@ -76,7 +76,7 @@ export interface SearchResult {
   id: string;
   name: string;
   col: string;
-  price: string;
+  priceCentavos: number;
   tint: string;
   imageUrl?: string;
   score: number;
@@ -135,7 +135,7 @@ export function searchProducts(query: string, catalog: Product[]): SearchResult[
     }
 
     if (score > 0) {
-      scored.push({ id: p.id, name: p.name, col: p.col, price: p.price, tint: p.tint, imageUrl: p.imageUrl, score });
+      scored.push({ id: p.id, name: p.name, col: p.col, priceCentavos: p.priceCentavos, tint: p.tint, imageUrl: p.imageUrl, score });
     }
   }
 

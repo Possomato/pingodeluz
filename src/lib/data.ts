@@ -1,21 +1,43 @@
+import { createPublicClient } from './supabase';
+import { DEFAULT_SHIPPING_CONFIG, type ShippingConfig } from './pricing';
+
+/**
+ * Leitura do catálogo e da configuração da loja.
+ *
+ * Regra desta camada (ADR-6): quando o banco falha, o erro sobe. Não
+ * existe catálogo de mentira embutido no código — uma loja que mostra
+ * produtos inexistentes é pior do que uma loja que avisa que está fora
+ * do ar. As páginas tratam o vazio e o erro explicitamente.
+ */
+
+// ─── Tipos ───────────────────────────────────────────────────
+
 export interface Product {
   id: string;
   name: string;
   nameParts: [string, string];
+  /** Nome da coleção a que pertence, como texto exibível. */
   col: string;
-  price: string;
+  collectionId?: string;
+  /** Fonte da verdade do preço, em centavos (ADR-2). */
+  priceCentavos: number;
   tint: string;
   label: string;
   desc?: string;
   sizes?: string[];
-  unavail?: string[];
-  stock?: Record<string, number>; // size → quantity; 0 = unavailable
+  /** Tamanho → quantidade disponível. Ausente ou 0 = esgotado. */
+  stock?: Record<string, number>;
   galleryLabels?: string[];
   imageUrl?: string;
   imageUrls?: string[];
   gender?: 'meninas' | 'meninos' | 'unissex';
-  type?: string; // ex: vestido, macacão, camisa, bermuda…
+  type?: string;
   sizeTableId?: string;
+  /** Conteúdo editorial por peça; vazio esconde a seção na página. */
+  composition?: string;
+  careInfo?: string;
+  madeBy?: string;
+  active: boolean;
 }
 
 export interface Collection {
@@ -35,96 +57,45 @@ export interface GenderData {
   eyebrow: string;
   tint: string;
   intro: string;
-  collections: string[];
 }
 
-export const HOME_PRODUCTS: Product[] = [
-  { id: 'p1', name: 'Vestido Margarida', nameParts: ['Vestido', 'Margarida'], col: 'Jardim Encantado', price: 'R$ 189', tint: 'rose', label: 'foto · vestido florido em musselina', desc: 'Vestido de musselina dupla com bordado de margaridas à mão na barra. Cintura solta, mangas bufantes e fita de seda nas costas.', sizes: ['1m', '3m', '6m', '9m', '1', '2', '4', '6', '8', '10', '12', '14'], unavail: ['8'], galleryLabels: ['frente', 'costas', 'bordado', 'detalhe da fita'] },
-  { id: 'p2', name: 'Macacão Explorador', nameParts: ['Macacão', 'Explorador'], col: 'Doce Aventura', price: 'R$ 159', tint: 'ochre', label: 'foto · macacão linho cru', desc: 'Macacão de linho cru com bolsos chapados e botões de coco. Tecido envelhece com o uso — fica mais bonito a cada lavagem.', sizes: ['1', '2', '3', '4', '6', '8'], unavail: [], galleryLabels: ['frente', 'costas', 'bolso', 'detalhe botão'] },
-  { id: 'p3', name: 'Camisa Borboleta', nameParts: ['Camisa', 'Borboleta'], col: 'Jardim Encantado', price: 'R$ 129', tint: 'sage', label: 'foto · camisa bordada', sizes: ['1m', '3m', '6m', '9m', '1', '2', '4', '6', '8', '10', '12', '14'] },
-  { id: 'p4', name: 'Bermuda Cipó', nameParts: ['Bermuda', 'Cipó'], col: 'Doce Aventura', price: 'R$ 109', tint: 'moss', label: 'foto · bermuda algodão' },
-  { id: 'p5', name: 'Conjunto Pétala', nameParts: ['Conjunto', 'Pétala'], col: 'Jardim Encantado', price: 'R$ 219', tint: 'clay', label: 'foto · conjunto blusa + saia', sizes: ['1m', '3m', '6m', '9m', '1', '2', '4', '6', '8', '10', '12', '14'] },
-];
+export interface Testimonial {
+  id: string;
+  quote: string;
+  author: string;
+  role: string;
+}
 
-export const COLLECTIONS: Record<string, Collection> = {
-  jardim: {
-    id: 'jardim',
-    name: ['Jardim', 'Encantado'],
-    eyebrow: 'Coleção nº 12 · Meninas 1–12',
-    tint: 'rose',
-    intro: 'Uma coleção que nasceu na varanda de uma casa de avó — entre roseiras, musselinas penduradas no varal e a luz baixa do fim de tarde. Pétalas bordadas à mão, renda francesa e tecidos que respiram nos dias mornos.',
-    count: 24,
-    products: [
-      { id: 'j1', name: 'Vestido Margarida', nameParts: ['Vestido', 'Margarida'], col: 'Jardim Encantado', price: 'R$ 189', tint: 'rose', label: 'foto · vestido florido' },
-      { id: 'j2', name: 'Camisa Borboleta', nameParts: ['Camisa', 'Borboleta'], col: 'Jardim Encantado', price: 'R$ 129', tint: 'sage', label: 'foto · camisa bordada' },
-      { id: 'j3', name: 'Conjunto Pétala', nameParts: ['Conjunto', 'Pétala'], col: 'Jardim Encantado', price: 'R$ 219', tint: 'clay', label: 'foto · blusa + saia' },
-      { id: 'j4', name: 'Saia Roseiral', nameParts: ['Saia', 'Roseiral'], col: 'Jardim Encantado', price: 'R$ 149', tint: 'rose', label: 'foto · saia rodada' },
-      { id: 'j5', name: 'Vestido Lavanda', nameParts: ['Vestido', 'Lavanda'], col: 'Jardim Encantado', price: 'R$ 209', tint: 'ochre', label: 'foto · vestido festa' },
-      { id: 'j6', name: 'Body Bordado', nameParts: ['Body', 'Bordado'], col: 'Jardim Encantado', price: 'R$ 99', tint: 'sage', label: 'foto · body algodão' },
-      { id: 'j7', name: 'Macaquinho Flora', nameParts: ['Macaquinho', 'Flora'], col: 'Jardim Encantado', price: 'R$ 179', tint: 'clay', label: 'foto · macaquinho' },
-      { id: 'j8', name: 'Camisola Jasmim', nameParts: ['Camisola', 'Jasmim'], col: 'Jardim Encantado', price: 'R$ 159', tint: 'rose', label: 'foto · camisola noite' },
-    ],
-  },
-  doce: {
-    id: 'doce',
-    name: ['Doce', 'Aventura'],
-    eyebrow: 'Coleção nº 12 · Meninos 1–12',
-    tint: 'ochre',
-    intro: 'Para os que voltam para casa com terra no joelho e história pra contar. Linho cru, sarjas leves e cores que combinam com mato, mar e fim de tarde. Tudo desenhado para aguentar o segundo, o terceiro e o quarto filho.',
-    count: 18,
-    products: [
-      { id: 'd1', name: 'Macacão Explorador', nameParts: ['Macacão', 'Explorador'], col: 'Doce Aventura', price: 'R$ 159', tint: 'ochre', label: 'foto · macacão linho' },
-      { id: 'd2', name: 'Bermuda Cipó', nameParts: ['Bermuda', 'Cipó'], col: 'Doce Aventura', price: 'R$ 109', tint: 'moss', label: 'foto · bermuda' },
-      { id: 'd3', name: 'Camisa Marinheiro', nameParts: ['Camisa', 'Marinheiro'], col: 'Doce Aventura', price: 'R$ 139', tint: 'sage', label: 'foto · camisa risca' },
-      { id: 'd4', name: 'Calça Trilha', nameParts: ['Calça', 'Trilha'], col: 'Doce Aventura', price: 'R$ 169', tint: 'clay', label: 'foto · calça sarja' },
-      { id: 'd5', name: 'Suéter Cabana', nameParts: ['Suéter', 'Cabana'], col: 'Doce Aventura', price: 'R$ 199', tint: 'ink', label: 'foto · tricot trança' },
-      { id: 'd6', name: 'Camiseta Pomar', nameParts: ['Camiseta', 'Pomar'], col: 'Doce Aventura', price: 'R$ 79', tint: 'moss', label: 'foto · camiseta' },
-    ],
-  },
-};
-
+/**
+ * Textos das páginas /genero/meninas e /genero/meninos. É conteúdo
+ * editorial fixo da marca, não dado de catálogo — os produtos vêm do
+ * banco, filtrados por `gender`.
+ */
 export const GENDER_DATA: Record<string, GenderData> = {
   meninas: {
     id: 'meninas',
     label: ['Para', 'meninas'],
-    eyebrow: 'todos os produtos · 1m–14',
+    eyebrow: 'todos os produtos',
     tint: 'rose',
     intro: 'Tudo o que temos para as meninas hoje — coleção atual e arquivo. Filtre por idade, coleção ou tipo de peça.',
-    collections: ['jardim'],
   },
   meninos: {
     id: 'meninos',
     label: ['Para', 'meninos'],
-    eyebrow: 'todos os produtos · 1m–14',
+    eyebrow: 'todos os produtos',
     tint: 'ochre',
     intro: 'Tudo o que temos para os meninos hoje — coleção atual e arquivo. Filtre por idade, coleção ou tipo de peça.',
-    collections: ['doce'],
   },
 };
 
-export interface MedidaRow {
-  manequim: string;
-  torax: number;
-  cintura: number;
-  comprimento: number;
-}
-
-export const TABELA_MEDIDAS: MedidaRow[] = [
-  { manequim: '1m',  torax: 40, cintura: 39, comprimento: 32 },
-  { manequim: '3m',  torax: 44, cintura: 41, comprimento: 35 },
-  { manequim: '6m',  torax: 46, cintura: 43, comprimento: 38 },
-  { manequim: '9m',  torax: 48, cintura: 44, comprimento: 41 },
-  { manequim: '1',   torax: 50, cintura: 48, comprimento: 44 },
-  { manequim: '2',   torax: 53, cintura: 52, comprimento: 50 },
-  { manequim: '4',   torax: 57, cintura: 56, comprimento: 60 },
-  { manequim: '6',   torax: 61, cintura: 58, comprimento: 65 },
-  { manequim: '8',   torax: 66, cintura: 60, comprimento: 70 },
-  { manequim: '10',  torax: 70, cintura: 62, comprimento: 75 },
-  { manequim: '12',  torax: 75, cintura: 64, comprimento: 80 },
-  { manequim: '14',  torax: 78, cintura: 66, comprimento: 85 },
+export const AGE_GROUPS: { label: string; sizes: string[] }[] = [
+  { label: '0–2 anos', sizes: ['1m', '3m', '6m', '9m', '1', '2'] },
+  { label: '3–6 anos', sizes: ['3', '4', '5', '6'] },
+  { label: '7–12 anos', sizes: ['7', '8', '9', '10', '11', '12'] },
+  { label: '12+ anos', sizes: ['13', '14'] },
 ];
 
-export const SIZES_MENINAS = TABELA_MEDIDAS.map(r => r.manequim);
+// ─── Tabelas de medidas ──────────────────────────────────────
 
 export interface SizeTable {
   id: string;
@@ -136,7 +107,11 @@ export interface SizeTable {
 
 type StoredColumn = string | { name: string; type: 'crianca' | 'vestido' };
 
-export function parseStoredColumns(raw: StoredColumn[]): { columns: string[]; columnTypes: Record<string, 'crianca' | 'vestido'> } {
+/** Colunas foram gravadas ora como string, ora como objeto. Aceita as duas. */
+export function parseStoredColumns(raw: StoredColumn[]): {
+  columns: string[];
+  columnTypes: Record<string, 'crianca' | 'vestido'>;
+} {
   const columns: string[] = [];
   const columnTypes: Record<string, 'crianca' | 'vestido'> = {};
   for (const c of raw) {
@@ -150,38 +125,32 @@ export function parseStoredColumns(raw: StoredColumn[]): { columns: string[]; co
   return { columns, columnTypes };
 }
 
-export const DEFAULT_SIZE_TABLES: SizeTable[] = [
-  {
-    id: 'padrao-meninas',
-    name: 'Padrão meninas',
-    columns: ['tórax', 'cintura', 'comprimento'],
-    columnTypes: {},
-    rows: TABELA_MEDIDAS.map(r => ({
-      size: r.manequim,
-      values: { 'tórax': r.torax, 'cintura': r.cintura, 'comprimento': r.comprimento },
-    })),
-  },
-];
+// ─── Parcelamento ────────────────────────────────────────────
 
 export interface PaymentConfig {
   maxParcelas: number;
-  parcelaMinima: number;
+  /** Valor mínimo de cada parcela, em centavos. */
+  parcelaMinimaCentavos: number;
   juros: 'sem' | number;
 }
 
 export const DEFAULT_PAYMENT_CONFIG: PaymentConfig = {
   maxParcelas: 3,
-  parcelaMinima: 50,
+  parcelaMinimaCentavos: 5000,
   juros: 'sem',
 };
 
-export function calcInstallments(price: string, config: PaymentConfig): string | null {
-  const value = parseFloat(price.replace(/[^\d,]/g, '').replace(',', '.'));
-  if (!value || value <= 0) return null;
+/** "em 3x de R$ 90 sem juros" — ou null se não parcela. */
+export function calcInstallments(priceCentavos: number, config: PaymentConfig): string | null {
+  if (!priceCentavos || priceCentavos <= 0) return null;
+
   for (let n = config.maxParcelas; n >= 2; n--) {
-    const parcela = value / n;
-    if (parcela >= config.parcelaMinima) {
-      const parcelaFmt = parcela.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const parcela = priceCentavos / n;
+    if (parcela >= config.parcelaMinimaCentavos) {
+      const parcelaFmt = (parcela / 100).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
       const jurosText = config.juros === 'sem' ? 'sem juros' : `${config.juros}% a.m.`;
       return `em ${n}x de R$ ${parcelaFmt} ${jurosText}`;
     }
@@ -189,11 +158,7 @@ export function calcInstallments(price: string, config: PaymentConfig): string |
   return null;
 }
 
-export const TESTIMONIALS = [
-  { q: 'A Manu vive nas roupas da Pingo. O tecido é macio de um jeito que parece carinho — e ela mesma escolhe o que vai vestir.', name: 'Marina Vasques', role: 'mãe da Manuela, 4' },
-  { q: 'Comprei o primeiro macacão do Theo na coleção Doce Aventura. Hoje guardo ele numa caixa — vai virar herança do irmão.', name: 'Beatriz Andrade', role: 'mãe do Theo, 2' },
-  { q: 'O cuidado com o acabamento se nota. As peças sobrevivem a três crianças sem perder a graça.', name: 'Luiza Caetano', role: 'mãe da Aurora, Liz e Cora' },
-];
+// ─── Vitrine ─────────────────────────────────────────────────
 
 export interface HomepageSection {
   id: string;
@@ -214,176 +179,222 @@ export const DEFAULT_HOMEPAGE_CONFIG: Record<HomepageSectionId, HomepageSection>
     {} as Record<HomepageSectionId, HomepageSection>
   );
 
-export const MOCK_ORDERS = [
-  { num: 'PDL-23491', date: 'maio · 2026', status: 'em trânsito', statusKind: 'transit', desc: 'Vestido Margarida + Conjunto Pétala', items: 2, total: 'R$ 408' },
-  { num: 'PDL-21204', date: 'março · 2026', status: 'entregue', statusKind: 'entregue', desc: 'Macacão Explorador', items: 1, total: 'R$ 159' },
-  { num: 'PDL-19877', date: 'janeiro · 2026', status: 'entregue', statusKind: 'entregue', desc: 'Saia Roseiral + Body Bordado + Camisola Jasmim', items: 3, total: 'R$ 407' },
-  { num: 'PDL-17331', date: 'novembro · 2025', status: 'entregue', statusKind: 'entregue', desc: 'Camisa Borboleta', items: 1, total: 'R$ 129' },
-];
+// ─── Mapeamento banco → domínio ──────────────────────────────
 
-export const MOCK_ADDRESSES = [
-  { id: 'casa', label: 'Casa', primary: true, line1: 'Rua das Acácias, 128 · apto 42', line2: 'Jardim Paulistano · São Paulo/SP', cep: '04546-001' },
-  { id: 'vovo', label: 'Casa da vovó', primary: false, line1: 'Rua Florença, 88', line2: 'Lourdes · Belo Horizonte/MG', cep: '30170-040' },
-];
+type Row = Record<string, unknown>;
 
-export const AGE_GROUPS: { label: string; sizes: string[] }[] = [
-  { label: '0–2 anos', sizes: ['1m', '3m', '6m', '9m', '1', '2'] },
-  { label: '3–6 anos', sizes: ['3', '4', '5', '6'] },
-  { label: '7–12 anos', sizes: ['7', '8', '9', '10', '11', '12'] },
-  { label: '12+ anos', sizes: ['13', '14'] },
-];
-
-export function parsePrice(s: string): number {
-  return parseInt(String(s).replace(/[^\d]/g, ''), 10) || 0;
-}
-
-export function formatPrice(n: number): string {
-  return 'R$ ' + n.toLocaleString('pt-BR');
-}
-
-export function getProductById(id: string) {
-  const catalog = getCatalog();
-  const hp = catalog.find(p => p.id === id);
-  if (hp) return hp;
-  const cols = getCollections();
-  for (const col of Object.values(cols)) {
-    const p = col.products.find(p => p.id === id);
-    if (p) return p;
-  }
-  return HOME_PRODUCTS[0];
-}
-
-export function getCatalog(): Product[] {
-  if (typeof window === 'undefined') return HOME_PRODUCTS;
-  try {
-    const saved = localStorage.getItem('pdl_admin_catalog');
-    return saved ? JSON.parse(saved) : HOME_PRODUCTS;
-  } catch {
-    return HOME_PRODUCTS;
-  }
-}
-
-export function getCollections(): Record<string, Collection> {
-  if (typeof window === 'undefined') return COLLECTIONS;
-  try {
-    const saved = localStorage.getItem('pdl_admin_collections');
-    return saved ? JSON.parse(saved) : COLLECTIONS;
-  } catch {
-    return COLLECTIONS;
-  }
-}
-
-// ─── Supabase async fetchers ────────────────────────────────
-
-function rowToProduct(row: Record<string, unknown>): Product {
+export function rowToProduct(row: Row): Product {
+  const nameParts = (row.name_parts as string[] | null) ?? [];
   return {
     id: row.id as string,
     name: row.name as string,
-    nameParts: (row.name_parts as [string, string]) ?? [row.name as string, ''],
-    col: row.col as string,
-    price: row.price as string,
-    tint: row.tint as string,
-    label: row.label as string,
-    desc: row.description as string | undefined,
-    sizes: row.sizes as string[] | undefined,
-    unavail: row.unavail as string[] | undefined,
-    stock: row.stock as Record<string, number> | undefined,
-    galleryLabels: row.gallery_labels as string[] | undefined,
-    imageUrl: row.image_url as string | undefined,
-    imageUrls: (row.image_urls as string[] | undefined) ?? [],
-    gender: row.gender as 'meninas' | 'meninos' | 'unissex' | undefined,
-    type: (row.product_type ?? row.type) as string | undefined,
-    sizeTableId: (row.size_table_id ?? row.sizeTableId) as string | undefined,
+    nameParts: [nameParts[0] ?? (row.name as string), nameParts[1] ?? ''],
+    col: (row.col as string) ?? '',
+    collectionId: (row.collection_id as string | null) ?? undefined,
+    priceCentavos: (row.price_centavos as number) ?? 0,
+    tint: (row.tint as string) ?? 'rose',
+    label: (row.label as string) ?? '',
+    desc: (row.description as string | null) ?? undefined,
+    sizes: (row.sizes as string[] | null) ?? [],
+    stock: (row.stock as Record<string, number> | null) ?? {},
+    galleryLabels: (row.gallery_labels as string[] | null) ?? [],
+    imageUrl: (row.image_url as string | null) ?? undefined,
+    imageUrls: (row.image_urls as string[] | null) ?? [],
+    gender: (row.gender as Product['gender']) ?? undefined,
+    type: (row.product_type as string | null) ?? undefined,
+    sizeTableId: (row.size_table_id as string | null) ?? undefined,
+    composition: (row.composition as string | null) ?? undefined,
+    careInfo: (row.care_info as string | null) ?? undefined,
+    madeBy: (row.made_by as string | null) ?? undefined,
+    active: (row.active as boolean) ?? true,
   };
 }
 
+/** Um tamanho está disponível se houver estoque registrado para ele. */
+export function isSizeAvailable(product: Product, size: string): boolean {
+  return (product.stock?.[size] ?? 0) > 0;
+}
+
+/** Produto esgotado: nenhum tamanho com estoque. */
+export function isSoldOut(product: Product): boolean {
+  const stock = product.stock ?? {};
+  return !Object.values(stock).some((qty) => qty > 0);
+}
+
+// ─── Leituras ────────────────────────────────────────────────
+
 export async function fetchCatalog(): Promise<Product[]> {
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/products?select=*`,
-      {
-        headers: {
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-        },
-        next: { revalidate: 60 },
-        signal: AbortSignal.timeout(8000),
-      }
-    );
-    if (!res.ok) return HOME_PRODUCTS;
-    const rows = await res.json();
-    return rows.map(rowToProduct);
-  } catch {
-    return HOME_PRODUCTS;
-  }
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('active', true)
+    .order('name');
+
+  if (error) throw new Error(`Falha ao carregar o catálogo: ${error.message}`);
+  return (data ?? []).map(rowToProduct);
 }
 
 export async function fetchCollections(): Promise<Record<string, Collection>> {
-  try {
-    const [colRes, prodRes] = await Promise.all([
-      fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/collections?select=*`, {
-        headers: {
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-        },
-        next: { revalidate: 60 },
-        signal: AbortSignal.timeout(8000),
-      }),
-      fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/products?select=*`, {
-        headers: {
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-        },
-        next: { revalidate: 60 },
-        signal: AbortSignal.timeout(8000),
-      }),
-    ]);
-    if (!colRes.ok || !prodRes.ok) return COLLECTIONS;
-    const colRows: Record<string, unknown>[] = await colRes.json();
-    const prodRows: Record<string, unknown>[] = await prodRes.json();
-    const products = prodRows.map(rowToProduct);
-    const result: Record<string, Collection> = {};
-    for (const row of colRows) {
-      const id = row.id as string;
-      const colProducts = products.filter(p => p.col === (row.name as string[]).join(' '));
-      result[id] = {
-        id,
-        name: row.name as [string, string],
-        eyebrow: row.eyebrow as string,
-        tint: row.tint as string,
-        intro: row.intro as string,
-        count: (row.count as number) ?? colProducts.length,
-        products: colProducts,
-        imageUrl: row.image_url as string | undefined,
-      };
-    }
-    return result;
-  } catch {
-    return COLLECTIONS;
+  const supabase = createPublicClient();
+
+  const [colRes, prodRes] = await Promise.all([
+    supabase.from('collections').select('*'),
+    supabase.from('products').select('*').eq('active', true).order('name'),
+  ]);
+
+  if (colRes.error) throw new Error(`Falha ao carregar coleções: ${colRes.error.message}`);
+  if (prodRes.error) throw new Error(`Falha ao carregar produtos: ${prodRes.error.message}`);
+
+  const products = (prodRes.data ?? []).map(rowToProduct);
+  const result: Record<string, Collection> = {};
+
+  for (const row of colRes.data ?? []) {
+    const id = row.id as string;
+    const nameParts = (row.name as string[] | null) ?? [];
+    const displayName = nameParts.join(' ');
+
+    // `collection_id` é a ligação correta; o casamento por nome existe
+    // para os produtos cadastrados antes de a coluna ser usada.
+    const colProducts = products.filter(
+      (p) => p.collectionId === id || (!p.collectionId && p.col === displayName)
+    );
+
+    result[id] = {
+      id,
+      name: [nameParts[0] ?? '', nameParts[1] ?? ''],
+      eyebrow: (row.eyebrow as string) ?? '',
+      tint: (row.tint as string) ?? 'rose',
+      intro: (row.intro as string) ?? '',
+      count: colProducts.length,
+      products: colProducts,
+      imageUrl: (row.image_url as string | null) ?? undefined,
+    };
   }
+
+  return result;
 }
 
-export async function fetchProductById(id: string): Promise<Product> {
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/products?id=eq.${encodeURIComponent(id)}&select=*`,
-      {
-        headers: {
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-        },
-        next: { revalidate: 60 },
-        signal: AbortSignal.timeout(8000),
-      }
-    );
-    if (!res.ok) return getProductById(id);
-    const rows = await res.json();
-    if (!rows.length) return getProductById(id);
-    return rowToProduct(rows[0]);
-  } catch {
-    return getProductById(id);
-  }
+export async function fetchProductById(id: string): Promise<Product | null> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase.from('products').select('*').eq('id', id).maybeSingle();
+
+  if (error) throw new Error(`Falha ao carregar o produto: ${error.message}`);
+  return data ? rowToProduct(data) : null;
 }
+
+export async function fetchHomepageConfig(): Promise<Record<HomepageSectionId, HomepageSection>> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase.from('homepage_config').select('*');
+
+  // A vitrine tem um padrão razoável (tudo visível, sem imagem), então
+  // aqui um erro degrada em vez de derrubar a home.
+  if (error) return DEFAULT_HOMEPAGE_CONFIG;
+
+  const result = { ...DEFAULT_HOMEPAGE_CONFIG };
+  for (const row of data ?? []) {
+    const id = row.id as HomepageSectionId;
+    if (id in result) {
+      result[id] = {
+        id,
+        visible: row.visible as boolean,
+        imageUrls: (row.image_urls as string[] | null) ?? [],
+      };
+    }
+  }
+  return result;
+}
+
+export async function fetchPaymentConfig(): Promise<PaymentConfig> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from('payment_config')
+    .select('*')
+    .eq('id', 'default')
+    .maybeSingle();
+
+  if (error || !data) return DEFAULT_PAYMENT_CONFIG;
+
+  return {
+    maxParcelas: data.max_parcelas as number,
+    parcelaMinimaCentavos: Math.round(Number(data.parcela_minima) * 100),
+    juros: data.juros === 'sem' ? 'sem' : parseFloat(data.juros as string),
+  };
+}
+
+export async function fetchShippingConfig(): Promise<ShippingConfig> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from('shipping_config')
+    .select('*')
+    .eq('id', 'default')
+    .maybeSingle();
+
+  if (error || !data) return DEFAULT_SHIPPING_CONFIG;
+
+  return {
+    flatCentavos: data.flat_centavos as number,
+    freeAboveCentavos: data.free_above_centavos as number,
+    pixDiscountPercent: data.pix_discount_percent as number,
+    shippingInfo:
+      (data.shipping_info as string | null) ?? DEFAULT_SHIPPING_CONFIG.shippingInfo,
+  };
+}
+
+export async function fetchTestimonials(): Promise<Testimonial[]> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from('testimonials')
+    .select('*')
+    .eq('visible', true)
+    .order('sort');
+
+  if (error) return [];
+
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    quote: row.quote as string,
+    author: row.author as string,
+    role: (row.role as string) ?? '',
+  }));
+}
+
+export async function fetchSizeTables(): Promise<SizeTable[]> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase.from('size_tables').select('*').order('name');
+
+  if (error) return [];
+
+  return (data ?? []).map((r) => {
+    const { columns, columnTypes } = parseStoredColumns((r.columns as StoredColumn[]) ?? []);
+    return {
+      id: r.id as string,
+      name: r.name as string,
+      columns,
+      columnTypes,
+      rows: (r.rows as SizeTable['rows']) ?? [],
+    };
+  });
+}
+
+export async function fetchSizeTableById(id: string | undefined): Promise<SizeTable | null> {
+  if (!id) return null;
+  const supabase = createPublicClient();
+  const { data, error } = await supabase.from('size_tables').select('*').eq('id', id).maybeSingle();
+
+  if (error || !data) return null;
+
+  const { columns, columnTypes } = parseStoredColumns((data.columns as StoredColumn[]) ?? []);
+  return {
+    id: data.id as string,
+    name: data.name as string,
+    columns,
+    columnTypes,
+    rows: (data.rows as SizeTable['rows']) ?? [],
+  };
+}
+
+// ─── Instagram ───────────────────────────────────────────────
 
 export interface InstagramPost {
   id: string;
@@ -396,6 +407,7 @@ export interface InstagramPost {
 export async function fetchInstagramFeed(): Promise<InstagramPost[]> {
   const token = process.env.INSTAGRAM_ACCESS_TOKEN;
   if (!token) return [];
+
   try {
     const res = await fetch(
       `https://graph.instagram.com/me/media?fields=id,media_type,media_url,thumbnail_url,permalink&limit=6&access_token=${token}`,
@@ -405,100 +417,7 @@ export async function fetchInstagramFeed(): Promise<InstagramPost[]> {
     const data = await res.json();
     return (data.data ?? []) as InstagramPost[];
   } catch {
+    // Feed de terceiro é decoração: se cair, a seção some silenciosamente.
     return [];
-  }
-}
-
-export async function fetchHomepageConfig(): Promise<Record<HomepageSectionId, HomepageSection>> {
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/homepage_config?select=*`,
-      {
-        headers: {
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-        },
-        next: { revalidate: 60 },
-        signal: AbortSignal.timeout(8000),
-      }
-    );
-    if (!res.ok) return DEFAULT_HOMEPAGE_CONFIG;
-    const rows: { id: string; visible: boolean; image_urls: string[] }[] = await res.json();
-    const result = { ...DEFAULT_HOMEPAGE_CONFIG };
-    for (const row of rows) {
-      if (row.id in result) {
-        result[row.id as HomepageSectionId] = {
-          id: row.id,
-          visible: row.visible,
-          imageUrls: row.image_urls ?? [],
-        };
-      }
-    }
-    return result;
-  } catch {
-    return DEFAULT_HOMEPAGE_CONFIG;
-  }
-}
-
-
-export async function fetchPaymentConfig(): Promise<PaymentConfig> {
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/payment_config?id=eq.default&select=*`,
-      {
-        headers: {
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-        },
-        next: { revalidate: 60 },
-        signal: AbortSignal.timeout(8000),
-      }
-    );
-    if (!res.ok) return DEFAULT_PAYMENT_CONFIG;
-    const rows = await res.json();
-    if (!rows.length) return DEFAULT_PAYMENT_CONFIG;
-    const row = rows[0];
-    return {
-      maxParcelas: row.max_parcelas as number,
-      parcelaMinima: row.parcela_minima as number,
-      juros: row.juros === 'sem' ? 'sem' : parseFloat(row.juros),
-    };
-  } catch {
-    return DEFAULT_PAYMENT_CONFIG;
-  }
-}
-
-export async function fetchSizeTables(): Promise<SizeTable[]> {
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/size_tables?select=*&order=name`,
-      {
-        headers: {
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-        },
-        next: { revalidate: 60 },
-        signal: AbortSignal.timeout(8000),
-      }
-    );
-    if (!res.ok) return [];
-    const rows = await res.json();
-    if (!rows.length) return [];
-    return rows.map((r: Record<string, unknown>) => {
-      const { columns, columnTypes } = parseStoredColumns((r.columns as StoredColumn[]) ?? []);
-      return { id: r.id as string, name: r.name as string, columns, columnTypes, rows: r.rows as SizeTable['rows'] };
-    });
-  } catch {
-    return [];
-  }
-}
-
-export async function fetchSizeTableById(id: string | undefined): Promise<SizeTable | null> {
-  if (!id) return null;
-  try {
-    const all = await fetchSizeTables();
-    return all.find(t => t.id === id) ?? null;
-  } catch {
-    return null;
   }
 }
