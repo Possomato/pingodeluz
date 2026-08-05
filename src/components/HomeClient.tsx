@@ -8,15 +8,17 @@ import PdlFooter from '@/components/PdlFooter';
 import PdlImg from '@/components/PdlImg';
 import InstagramFeed from '@/components/InstagramFeed';
 import { Sparkle, IconArrowRight } from '@/components/Icons';
-import { TESTIMONIALS, type Product, type Collection, type HomepageSection, type HomepageSectionId } from '@/lib/data';
+import type { Product, Collection, HomepageSection, HomepageSectionId, Testimonial } from '@/lib/data';
+import { formatCentavos } from '@/lib/money';
 
 interface Props {
   hpConfig: Record<HomepageSectionId, HomepageSection>;
   products: Product[];
   collections: Record<string, Collection>;
+  testimonials: Testimonial[];
 }
 
-export default function HomeClient({ hpConfig, products, collections }: Props) {
+export default function HomeClient({ hpConfig, products, collections, testimonials }: Props) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -80,7 +82,7 @@ export default function HomeClient({ hpConfig, products, collections }: Props) {
                   <div className="pdl-prod-name">{p.name}</div>
                   <div className="pdl-prod-meta">
                     <span className="pdl-prod-col">{p.col}</span>
-                    <span className="pdl-prod-price">{p.price?.startsWith('R$') ? p.price : `R$ ${p.price}`}</span>
+                    <span className="pdl-prod-price">{formatCentavos(p.priceCentavos)}</span>
                   </div>
                 </div>
               </div>
@@ -154,25 +156,31 @@ export default function HomeClient({ hpConfig, products, collections }: Props) {
         </div>
       )}
 
-      {hpConfig.depoimentos.visible && (
+      {hpConfig.depoimentos.visible && testimonials.length > 0 && (
         <div className="pdl-section">
           <div className="pdl-section-head">
             <h2>O que dizem as <em>mães</em></h2>
           </div>
           <div className="pdl-test">
             <div className="pdl-test-card">
-              <div className="pdl-test-quote">{TESTIMONIALS[testIdx].q}</div>
+              <div className="pdl-test-quote">{testimonials[testIdx]?.quote}</div>
               <div className="pdl-test-author">
                 <div className="pdl-test-avatar" />
                 <div>
-                  <div style={{ color: 'var(--ink)', fontWeight: 500 }}>{TESTIMONIALS[testIdx].name}</div>
-                  <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic' }}>{TESTIMONIALS[testIdx].role}</div>
+                  <div style={{ color: 'var(--ink)', fontWeight: 500 }}>{testimonials[testIdx]?.author}</div>
+                  <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic' }}>{testimonials[testIdx]?.role}</div>
                 </div>
               </div>
             </div>
             <div className="pdl-test-dots">
-              {TESTIMONIALS.map((_, i) => (
-                <span key={i} className={`pdl-test-dot ${i === testIdx ? 'active' : ''}`} onClick={() => setTestIdx(i)} />
+              {testimonials.map((tst, i) => (
+                <button
+                  key={tst.id}
+                  type="button"
+                  className={`pdl-test-dot ${i === testIdx ? 'active' : ''}`}
+                  onClick={() => setTestIdx(i)}
+                  aria-label={`Depoimento ${i + 1} de ${testimonials.length}`}
+                />
               ))}
             </div>
           </div>

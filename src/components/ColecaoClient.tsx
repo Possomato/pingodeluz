@@ -8,6 +8,7 @@ import PdlFooter from '@/components/PdlFooter';
 import PdlImg from '@/components/PdlImg';
 import { IconChevronDown } from '@/components/Icons';
 import { AGE_GROUPS, type Collection } from '@/lib/data';
+import { formatCentavos } from '@/lib/money';
 
 export default function ColecaoClient({ c, filters }: { c: Collection; filters: string[] }) {
   const router = useRouter();
@@ -81,7 +82,7 @@ export default function ColecaoClient({ c, filters }: { c: Collection; filters: 
                   <div className="pdl-prod-name">{p.name}</div>
                   <div className="pdl-prod-meta">
                     <span className="pdl-prod-col">{c.name.join(' ')}</span>
-                    <span className="pdl-prod-price">{p.price?.startsWith('R$') ? p.price : `R$ ${p.price}`}</span>
+                    <span className="pdl-prod-price">{formatCentavos(p.priceCentavos)}</span>
                   </div>
                 </div>
               </div>

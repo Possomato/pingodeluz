@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import PdlImg from '@/components/PdlImg';
 import PdlHeader from '@/components/PdlHeader';
 import PdlDrawer from '@/components/PdlDrawer';
 import PdlFooter from '@/components/PdlFooter';
 import { IconChevronDown, IconArrowRight } from '@/components/Icons';
-import { TABELA_MEDIDAS, SIZES_MENINAS, fetchCatalog, calcInstallments } from '@/lib/data';
+import { calcInstallments, isSizeAvailable, isSoldOut } from '@/lib/data';
+import { formatCentavos } from '@/lib/money';
 import type { Product, SizeTable, PaymentConfig } from '@/lib/data';
 import { useCart } from '@/context/CartContext';
 import HeartButton from '@/components/HeartButton';
@@ -22,64 +23,70 @@ function formatSize(s: string): string {
   return n === 1 ? '1 ano' : `${n} anos`;
 }
 
-const COL_SLUG: Record<string, string> = {
-  'Jardim Encantado': 'jardim',
-  'Doce Aventura': 'doce',
-};
+/**
+ * Largura da janela lida como sistema externo, que é o que ela é.
+ * `useSyncExternalStore` evita o estado duplicado que um efeito criaria
+ * e já entrega o valor certo na primeira renderização do cliente.
+ */
+const DESKTOP_QUERY = '(min-width: 1024px)';
+
+function subscribeToDesktop(callback: () => void) {
+  const mq = window.matchMedia(DESKTOP_QUERY);
+  mq.addEventListener('change', callback);
+  return () => mq.removeEventListener('change', callback);
+}
+
+function useIsDesktop() {
+  return useSyncExternalStore(
+    subscribeToDesktop,
+    () => window.matchMedia(DESKTOP_QUERY).matches,
+    () => false,  // no servidor, assume mobile
+  );
+}
 
 export default function ProdutoClient({
-  p, id, sizeTable, paymentConfig, colIntro,
+  p, id, sizeTable, paymentConfig, colIntro, related, shippingInfo,
 }: {
   p: Product;
   id: string;
   sizeTable: SizeTable | null;
   paymentConfig: PaymentConfig;
   colIntro: string;
+  related: Product[];
+  shippingInfo: string;
 }) {
   const router = useRouter();
   const { addToCart } = useCart();
   const [menuOpen, setMenuOpen] = useState(false);
   const [size, setSize] = useState<string | null>(null);
-  const [related, setRelated] = useState<Product[]>([]);
   const [galleryIdx, setGalleryIdx] = useState(0);
   const [openAcc, setOpenAcc] = useState<string | null>('medidas');
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [relIdx, setRelIdx] = useState(0);
-  const [isDesktop, setIsDesktop] = useState(false);
+  const isDesktop = useIsDesktop();
   const [isFavorited, setIsFavorited] = useState(false);
   const [favLoading, setFavLoading] = useState(true);
 
   const imgs = p.imageUrls?.length ? p.imageUrls : (p.imageUrl ? [p.imageUrl] : []);
   const labels = p.galleryLabels?.length === imgs.length ? p.galleryLabels : imgs.map((_, i) => `foto ${i + 1}`);
   const nameParts = p.nameParts || [p.name, ''];
-  const sizeOrder = sizeTable ? sizeTable.rows.map(r => r.size) : TABELA_MEDIDAS.map(r => r.manequim);
-  const rawSizes = p.sizes?.length ? p.sizes : SIZES_MENINAS;
-  const sizes = [...rawSizes].sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
-  const colSlug = COL_SLUG[p.col] ?? p.col.toLowerCase().split(' ')[0];
-
-  useEffect(() => {
-    fetchCatalog().then(all => {
-      setRelated(all.filter(r => r.id !== id).slice(0, 4));
-    }).catch(() => {});
-  }, [id]);
+  const sizeOrder = sizeTable ? sizeTable.rows.map(r => r.size) : [];
+  const sizes = [...(p.sizes ?? [])].sort((a, b) => {
+    const ia = sizeOrder.indexOf(a);
+    const ib = sizeOrder.indexOf(b);
+    // Tamanhos fora da tabela vão para o fim, preservando a ordem original.
+    return (ia === -1 ? Number.MAX_SAFE_INTEGER : ia) - (ib === -1 ? Number.MAX_SAFE_INTEGER : ib);
+  });
+  const soldOut = isSoldOut(p);
 
   useEffect(() => {
     const checkFavorite = async () => {
-      setFavLoading(true);
       const result = await isFavoritedAction(id);
       setIsFavorited(result);
       setFavLoading(false);
     };
     checkFavorite();
   }, [id]);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1024px)');
-    setIsDesktop(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
 
   useEffect(() => {
     if (!lightboxOpen) return;
@@ -97,7 +104,15 @@ export default function ProdutoClient({
 
   const handleBuy = () => {
     if (!size) return;
-    addToCart({ pid: id, id, name: p.name, col: p.col, price: p.price, tint: p.tint, size });
+    addToCart({
+      pid: id,
+      name: p.name,
+      col: p.col,
+      priceCentavos: p.priceCentavos,
+      tint: p.tint,
+      size,
+      imageUrl: p.imageUrl,
+    });
     router.push('/carrinho');
   };
 
@@ -109,8 +124,12 @@ export default function ProdutoClient({
       <nav className="pdl-breadcrumb">
         <span className="pdl-breadcrumb-link" onClick={() => router.push('/')}>Pingo de Luz</span>
         <span className="pdl-breadcrumb-sep">›</span>
-        <span className="pdl-breadcrumb-link" onClick={() => router.push(`/colecao/${colSlug}`)}>{p.col}</span>
-        <span className="pdl-breadcrumb-sep">›</span>
+        {p.collectionId && (
+          <>
+            <span className="pdl-breadcrumb-link" onClick={() => router.push(`/colecao/${p.collectionId}`)}>{p.col}</span>
+            <span className="pdl-breadcrumb-sep">›</span>
+          </>
+        )}
         <span className="pdl-breadcrumb-current">{p.name}</span>
       </nav>
 
@@ -181,9 +200,9 @@ export default function ProdutoClient({
               {!favLoading && <HeartButton productId={id} initialFavorited={isFavorited} />}
             </div>
             <div className="pdl-prodpage-price">
-              <span className="now">{p.price}</span>
+              <span className="now">{formatCentavos(p.priceCentavos)}</span>
               {(() => {
-                const inst = calcInstallments(p.price, paymentConfig);
+                const inst = calcInstallments(p.priceCentavos, paymentConfig);
                 return inst ? <span className="installments">— {inst}</span> : null;
               })()}
             </div>
@@ -192,15 +211,22 @@ export default function ProdutoClient({
             <div className="pdl-prodpage-section">
               <h4><span>tamanho</span></h4>
               <div className="pdl-prodpage-sizes">
-                {sizes.map(s => (
-                  <div
-                    key={s}
-                    className={`pdl-size ${size === s ? 'selected' : ''}`}
-                    onClick={() => setSize(s)}
-                  >
-                    {s}
-                  </div>
-                ))}
+                {sizes.map(s => {
+                  const available = isSizeAvailable(p, s);
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      className={`pdl-size ${size === s ? 'selected' : ''}${available ? '' : ' unavail'}`}
+                      onClick={() => available && setSize(s)}
+                      disabled={!available}
+                      aria-pressed={size === s}
+                      aria-label={`Tamanho ${s}${available ? '' : ' — esgotado'}`}
+                    >
+                      {s}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -209,10 +235,10 @@ export default function ProdutoClient({
               <button
                 className={`pdl-cta-btn${size ? ' active' : ''}`}
                 onClick={handleBuy}
-                disabled={!size}
+                disabled={!size || soldOut}
               >
-                {size ? `Comprar · Tamanho ${formatSize(size)}` : 'escolha um tamanho'}
-                {size && <IconArrowRight size={12} />}
+                {soldOut ? 'esgotado' : size ? `Comprar · Tamanho ${formatSize(size)}` : 'escolha um tamanho'}
+                {size && !soldOut && <IconArrowRight size={12} />}
               </button>
             </div>
 
@@ -261,25 +287,9 @@ export default function ProdutoClient({
                             </tbody>
                           </table>
                         ) : (
-                          <table className="pdl-size-table">
-                            <thead>
-                              <tr><th>tam.</th><th>tórax</th><th>cintura</th><th>compr.</th></tr>
-                            </thead>
-                            <tbody>
-                              {TABELA_MEDIDAS.filter(row => sizes.includes(row.manequim)).map(row => (
-                                <tr
-                                  key={row.manequim}
-                                  className={`pdl-size-table-row ${size === row.manequim ? 'active' : ''}`}
-                                  onClick={() => setSize(row.manequim)}
-                                >
-                                  <td className="pdl-size-table-maneq">{row.manequim}</td>
-                                  <td>{row.torax}</td>
-                                  <td>{row.cintura}</td>
-                                  <td>{row.comprimento}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                          <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>
+                            Tabela de medidas em breve para esta peça.
+                          </div>
                         )}
                       </div>
                       <div className="pdl-size-chart-caption">medidas em centímetros · corpo da criança</div>
@@ -287,6 +297,7 @@ export default function ProdutoClient({
                   </div>
                 )}
               </div>
+              {(p.composition || p.careInfo) && (
               <div className="pdl-acc">
                 <div className="pdl-acc-head" onClick={() => toggle('compo')}>
                   <span>Composição e cuidado</span>
@@ -294,31 +305,29 @@ export default function ProdutoClient({
                 </div>
                 {openAcc === 'compo' && (
                   <div className="pdl-acc-body">
-                    100% musselina de algodão orgânico, certificado GOTS. Lavar à mão com água fria, secar à sombra.
-                    Bordado feito à mão em ateliê parceiro em Minas Gerais.
+                    {[p.composition, p.careInfo].filter(Boolean).join(' ')}
                   </div>
                 )}
               </div>
+              )}
+              {p.madeBy && (
               <div className="pdl-acc">
                 <div className="pdl-acc-head" onClick={() => toggle('feito')}>
                   <span>Feito à mão por</span>
                   <span className={`pdl-acc-chevron${openAcc === 'feito' ? ' open' : ''}`}><IconChevronDown size={14} /></span>
                 </div>
                 {openAcc === 'feito' && (
-                  <div className="pdl-acc-body">
-                    Cooperativa Flor de Lis, Pirapora — MG. Cada peça leva o nome bordado da artesã na etiqueta interna.
-                  </div>
+                  <div className="pdl-acc-body">{p.madeBy}</div>
                 )}
               </div>
+              )}
               <div className="pdl-acc">
                 <div className="pdl-acc-head" onClick={() => toggle('envio')}>
                   <span>Envio e trocas</span>
                   <span className={`pdl-acc-chevron${openAcc === 'envio' ? ' open' : ''}`}><IconChevronDown size={14} /></span>
                 </div>
                 {openAcc === 'envio' && (
-                  <div className="pdl-acc-body">
-                    Envio em até 3 dias úteis. Frete grátis em compras acima de R$ 250. Trocas em até 30 dias, sem perguntas.
-                  </div>
+                  <div className="pdl-acc-body">{shippingInfo}</div>
                 )}
               </div>
             </div>
@@ -357,7 +366,7 @@ export default function ProdutoClient({
                   >
                     <PdlImg tint={rp.tint} imageUrl={rp.imageUrl} style={{ aspectRatio: '3/4', borderRadius: 3, marginBottom: 8 }} />
                     <div style={{ fontFamily: 'var(--editorial)', fontSize: 13, color: 'var(--ink)' }}>{rp.name}</div>
-                    <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>{rp.price?.startsWith('R$') ? rp.price : `R$ ${rp.price}`}</div>
+                    <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>{formatCentavos(rp.priceCentavos)}</div>
                   </div>
                 ))}
               </div>
@@ -374,7 +383,7 @@ export default function ProdutoClient({
                 <div key={rp.id} style={{ flex: '0 0 48%' }} onClick={() => router.push(`/produto/${rp.id}`)}>
                   <PdlImg tint={rp.tint} imageUrl={rp.imageUrl} style={{ aspectRatio: '3/4', borderRadius: 3, marginBottom: 8 }} />
                   <div style={{ fontFamily: 'var(--editorial)', fontSize: 13, color: 'var(--ink)' }}>{rp.name}</div>
-                  <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>{rp.price?.startsWith('R$') ? rp.price : `R$ ${rp.price}`}</div>
+                  <div style={{ fontSize: 11, fontWeight: 500, marginTop: 2 }}>{formatCentavos(rp.priceCentavos)}</div>
                 </div>
               ))}
             </div>
@@ -389,10 +398,10 @@ export default function ProdutoClient({
         <button
           className={`pdl-cta-btn${size ? ' active' : ''}`}
           onClick={handleBuy}
-          disabled={!size}
+          disabled={!size || soldOut}
         >
-          {size ? `Comprar · Tamanho ${formatSize(size)}` : 'escolha um tamanho'}
-          {size && <IconArrowRight size={12} />}
+          {soldOut ? 'esgotado' : size ? `Comprar · Tamanho ${formatSize(size)}` : 'escolha um tamanho'}
+          {size && !soldOut && <IconArrowRight size={12} />}
         </button>
       </div>
 

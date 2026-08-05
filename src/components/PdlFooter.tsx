@@ -8,32 +8,30 @@ const PAYMENT_LOGOS = ['Pix', 'Visa', 'Mastercard', 'Elo', 'Hipercard'];
 
 type FooterCol = { title: string; links: { label: string; href?: string }[] };
 
+// Só links que levam a algum lugar. Itens sem destino foram removidos:
+// um rodapé cheio de rótulos que não clicam é pior do que um rodapé curto.
+// As coleções não estão aqui porque mudam — elas aparecem na home.
 const COLS: FooterCol[] = [
   {
     title: 'Navegação',
     links: [
       { label: 'Meninas', href: '/genero/meninas' },
       { label: 'Meninos', href: '/genero/meninos' },
-      { label: 'Jardim Encantado', href: '/colecao/jardim' },
-      { label: 'Doce Aventura', href: '/colecao/doce' },
-      { label: 'Arquivo' },
+      { label: 'Buscar', href: '/busca' },
     ],
   },
   {
     title: 'Institucional',
     links: [
-      { label: 'Nossa história' },
-      { label: 'Como fazemos' },
-      { label: 'Guia de tamanhos' },
-      { label: 'Trocas e devoluções' },
+      { label: 'Nossa história', href: '/sobre' },
+      { label: 'Envio e trocas', href: '/trocas' },
+      { label: 'Privacidade', href: '/privacidade' },
     ],
   },
   {
     title: 'Contato',
     links: [
-      { label: 'atendimento@pingodelu.com.br' },
-      { label: 'WhatsApp' },
-      { label: '@pingodelu' },
+      { label: 'atendimento@pingodelu.com.br', href: 'mailto:atendimento@pingodelu.com.br' },
     ],
   },
 ];
@@ -45,7 +43,13 @@ export default function PdlFooter() {
   const toggle = (title: string) => setOpenCol(openCol === title ? null : title);
 
   const handleLink = (href?: string) => {
-    if (href) router.push(href);
+    if (!href) return;
+    // mailto: e tel: não passam pelo roteador do Next.
+    if (href.startsWith('mailto:') || href.startsWith('tel:')) {
+      window.open(href, '_self');
+      return;
+    }
+    router.push(href);
   };
 
   return (

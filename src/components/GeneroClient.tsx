@@ -8,6 +8,7 @@ import PdlFooter from '@/components/PdlFooter';
 import PdlImg from '@/components/PdlImg';
 import { IconChevronDown } from '@/components/Icons';
 import { AGE_GROUPS, type GenderData, type Product } from '@/lib/data';
+import { formatCentavos } from '@/lib/money';
 
 export default function GeneroClient({
   g,
@@ -30,6 +31,9 @@ export default function GeneroClient({
 
   // Collection chips — unique collection names from the products
   const colChips = Array.from(new Set(products.map(p => p.col).filter(Boolean)));
+
+  // Link "conheça também": a coleção do primeiro produto listado.
+  const featuredCollectionId = products.find(p => p.collectionId)?.collectionId;
 
   const filters = ['todas', ...activeAgeGroups, ...colChips];
 
@@ -112,7 +116,7 @@ export default function GeneroClient({
                   <div className="pdl-prod-name">{p.name}</div>
                   <div className="pdl-prod-meta">
                     <span className="pdl-prod-col">{p.col}</span>
-                    <span className="pdl-prod-price">{p.price?.startsWith('R$') ? p.price : `R$ ${p.price}`}</span>
+                    <span className="pdl-prod-price">{formatCentavos(p.priceCentavos)}</span>
                   </div>
                 </div>
               </div>
@@ -125,15 +129,18 @@ export default function GeneroClient({
             </div>
           )}
 
-          <div style={{ padding: '36px 0', textAlign: 'center' }}>
-            <div className="pdl-eyebrow" style={{ marginBottom: 10 }}>conheça também</div>
-            <div
-              style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 16, color: 'var(--ink-soft)', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 4 }}
-              onClick={() => router.push(`/colecao/${g.collections[0]}`)}
-            >
-              A coleção
+          {featuredCollectionId && (
+            <div style={{ padding: '36px 0', textAlign: 'center' }}>
+              <div className="pdl-eyebrow" style={{ marginBottom: 10 }}>conheça também</div>
+              <button
+                type="button"
+                style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 16, color: 'var(--ink-soft)', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 4 }}
+                onClick={() => router.push(`/colecao/${featuredCollectionId}`)}
+              >
+                A coleção
+              </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import PdlDrawer from '@/components/PdlDrawer';
 import PdlFooter from '@/components/PdlFooter';
 import PdlImg from '@/components/PdlImg';
 import type { SearchResult } from '@/lib/search';
+import { formatCentavos } from '@/lib/money';
 
 interface Props {
   query: string;
@@ -32,7 +33,7 @@ export default function BuscaClient({ query, results }: Props) {
         <div className="pdl-eyebrow">{results.length} {results.length === 1 ? 'peça encontrada' : 'peças encontradas'}</div>
         <h1>
           {query
-            ? <><em>"{query}"</em></>
+            ? <><em>&ldquo;{query}&rdquo;</em></>
             : 'O que você procura?'}
         </h1>
       </div>
@@ -46,7 +47,7 @@ export default function BuscaClient({ query, results }: Props) {
                 <div className="pdl-prod-name">{p.name}</div>
                 <div className="pdl-prod-meta">
                   <span className="pdl-prod-col">{p.col}</span>
-                  <span className="pdl-prod-price">{p.price?.startsWith('R$') ? p.price : `R$ ${p.price}`}</span>
+                  <span className="pdl-prod-price">{formatCentavos(p.priceCentavos)}</span>
                 </div>
               </div>
             </div>
