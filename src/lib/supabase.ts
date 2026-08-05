@@ -1,8 +1,15 @@
-import { createServerClient } from '@supabase/ssr';
-import { createBrowserClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createBrowserClient, createServerClient } from '@supabase/ssr';
 
-// Browser client — use in 'use client' components
+/**
+ * Clients que podem ser importados de qualquer lugar.
+ *
+ * Nada aqui toca `next/headers` — esse import é exclusivo do servidor e
+ * quebraria o bundle do cliente, já que `lib/data.ts` (usado por
+ * componentes 'use client') importa deste módulo. Os clients com sessão
+ * e o service role moram em `supabase-server.ts`.
+ */
+
+// Client do browser — anon key, sujeito a RLS.
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,32 +17,14 @@ export function createClient() {
   );
 }
 
-// Server client — use in Server Components and Server Actions
-export async function createServerSupabaseClient() {
-  const cookieStore = await cookies();
+/**
+ * Client sem sessão, para ler dados públicos em Server Components.
+ * Usa a anon key e respeita RLS, então só enxerga o que é público.
+ */
+export function createPublicClient() {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {}
-        },
-      },
-    }
-  );
-}
-
-// Service role client — use only in Server Actions and webhooks (never expose to client)
-export function createServiceClient() {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { cookies: { getAll: () => [], setAll: () => {} } }
   );
 }
