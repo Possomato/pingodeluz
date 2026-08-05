@@ -1,34 +1,23 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { ensureUserProfile } from '@/app/actions/auth-user';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 
+/**
+ * Retorno do OAuth. O perfil em `public.users` é criado por trigger no
+ * banco, então aqui só resta trocar o código pela sessão.
+ */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/perfil';
 
+  // Só caminhos internos: um `next` absoluto viraria redirect aberto.
+  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/perfil';
+
   if (code) {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
+    const supabase = await createServerSupabaseClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      // Ensure user profile exists in profiles table
-      await ensureUserProfile();
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${origin}${safeNext}`);
     }
   }
 
