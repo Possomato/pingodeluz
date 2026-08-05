@@ -1,27 +1,46 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useAdmin } from '@/context/AdminContext';
+import { formatCentavos } from '@/lib/money';
 import { calcInstallments, PaymentConfig } from '@/lib/data';
 
-const PREVIEW_PRICES = ['R$ 89', 'R$ 159', 'R$ 250'];
+// Valores de referência só para pré-visualizar a regra de parcelamento.
+const PREVIEW_PRICES_CENTAVOS = [8900, 15900, 25000];
 
 export default function PagamentosPage() {
-  const { paymentConfig, updatePaymentConfig } = useAdmin();
-  const [form, setForm] = useState<PaymentConfig>(paymentConfig);
-  const [toast, setToast] = useState(false);
+  const { paymentConfig, updatePaymentConfig, loading } = useAdmin();
 
-  useEffect(() => {
-    setForm(paymentConfig);
-  }, [paymentConfig]);
+  if (loading) return <AdminLayout><p style={{ color: '#888' }}>Carregando…</p></AdminLayout>;
+
+  // A `key` remonta o formulário quando a configuração chega do banco,
+  // no lugar de um efeito que copiava props para estado.
+  return (
+    <PagamentosForm
+      key={`${paymentConfig.maxParcelas}-${paymentConfig.parcelaMinimaCentavos}-${paymentConfig.juros}`}
+      initial={paymentConfig}
+      onSave={updatePaymentConfig}
+    />
+  );
+}
+
+function PagamentosForm({
+  initial,
+  onSave,
+}: {
+  initial: PaymentConfig;
+  onSave: (c: PaymentConfig) => void;
+}) {
+  const [form, setForm] = useState<PaymentConfig>(initial);
+  const [toast, setToast] = useState(false);
 
   const set = <K extends keyof PaymentConfig>(k: K, v: PaymentConfig[K]) =>
     setForm(f => ({ ...f, [k]: v }));
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    updatePaymentConfig(form);
+    onSave(form);
     setToast(true);
     setTimeout(() => setToast(false), 2000);
   };
@@ -43,11 +62,14 @@ export default function PagamentosPage() {
             />
           </div>
           <div className="adm-field">
-            <label>Parcela mínima (R$)</label>
+            <label htmlFor="parcela-min">Parcela mínima (R$)</label>
             <input
-              type="number" min={0}
-              value={form.parcelaMinima}
-              onChange={e => set('parcelaMinima', parseFloat(e.target.value) || 0)}
+              id="parcela-min"
+              type="number" min={0} step={0.01}
+              value={form.parcelaMinimaCentavos / 100}
+              onChange={e =>
+                set('parcelaMinimaCentavos', Math.round((parseFloat(e.target.value) || 0) * 100))
+              }
             />
           </div>
         </div>
@@ -75,11 +97,11 @@ export default function PagamentosPage() {
         <div className="adm-field">
           <label style={{ marginBottom: 8, display: 'block' }}>Preview</label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {PREVIEW_PRICES.map(price => {
+            {PREVIEW_PRICES_CENTAVOS.map(price => {
               const result = calcInstallments(price, form);
               return (
                 <div key={price} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 13, minWidth: 64 }}>{price}</span>
+                  <span style={{ fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 13, minWidth: 64 }}>{formatCentavos(price)}</span>
                   <span style={{ fontSize: 13, color: result ? 'var(--ink)' : 'var(--muted)' }}>
                     {result ?? '— sem parcelamento'}
                   </span>
