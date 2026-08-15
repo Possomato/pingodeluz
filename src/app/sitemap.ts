@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { fetchCatalog, fetchCollections, GENDER_DATA } from '@/lib/data';
 
-const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://pingodeluz.com.br';
+const BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://pingodeluz.com';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes: MetadataRoute.Sitemap = [
