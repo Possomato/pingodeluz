@@ -8,10 +8,11 @@ import { createServerSupabaseClient } from '@/lib/supabase-server';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/perfil';
+  // Login bem-sucedido termina na home, não no perfil.
+  const next = searchParams.get('next') ?? '/';
 
   // Só caminhos internos: um `next` absoluto viraria redirect aberto.
-  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/perfil';
+  const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/';
 
   if (code) {
     const supabase = await createServerSupabaseClient();

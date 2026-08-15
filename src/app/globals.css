@@ -363,6 +363,36 @@ button.pdl-chip.active { background: var(--ink); color: var(--cream-warm); borde
 .pdl-google-btn:disabled { background: var(--cream-warm); color: var(--muted); cursor: wait; }
 .pdl-login-foot { margin-top: 28px; font-family: var(--editorial); font-style: italic; font-size: 12.5px; color: var(--muted); line-height: 1.5; max-width: 260px; }
 .pdl-login-foot a { color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; }
+
+/* login por código no e-mail (OTP) */
+.pdl-login-divider { display: flex; align-items: center; gap: 14px; width: 100%; max-width: 280px; margin: 26px auto; color: var(--muted); }
+.pdl-login-divider::before, .pdl-login-divider::after { content: ""; flex: 1; height: 1px; background: var(--border-soft); }
+.pdl-login-divider span { font-family: var(--editorial); font-style: italic; font-size: 13px; }
+.pdl-login-form { width: 100%; max-width: 280px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.pdl-field-label { font-family: var(--sans); font-weight: 600; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); text-align: left; }
+.pdl-field { width: 100%; padding: 16px 18px; background: #fff; border: 1px solid var(--border); border-radius: 14px; font-family: var(--sans); font-size: 16px; color: var(--ink); text-align: left; }
+/* 16px no input não é estética: abaixo disso o Safari do iPhone dá zoom
+   ao focar e a tela inteira pula. */
+.pdl-field::placeholder { color: var(--muted-2); }
+.pdl-field:focus-visible, .pdl-otp-input:focus-visible { outline: none; border-color: var(--terra); box-shadow: 0 0 0 3px rgba(192, 134, 96, 0.18); }
+.pdl-field:disabled, .pdl-otp-input:disabled { background: var(--cream-warm); color: var(--muted); }
+/* Prefixo `button.` de propósito, igual ao button.pdl-chip: o reset
+   `.pdl-app button { border: none; padding: 0 }` tem especificidade
+   maior que uma classe sozinha e comeria a borda. */
+button.pdl-btn-outline { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 18px 24px; background: transparent; border: 1px solid var(--ink); border-radius: 999px; font-family: var(--sans); font-weight: 600; font-size: 14px; color: var(--ink); cursor: pointer; }
+button.pdl-btn-outline:disabled { border-color: var(--border); color: var(--muted-2); cursor: wait; }
+/* Um input só, não seis caixinhas: caixinhas separadas quebram colar,
+   autofill e backspace no teclado do celular. O letter-spacing dá a
+   leitura de dígitos separados sem abrir mão disso. */
+.pdl-otp-input { width: 100%; padding: 20px 0; background: #fff; border: 1px solid var(--border); border-radius: 14px; font-family: var(--sans); font-weight: 600; font-size: 30px; letter-spacing: 0.34em; text-indent: 0.34em; text-align: center; color: var(--ink); }
+.pdl-otp-input::placeholder { color: var(--muted-2); letter-spacing: 0.34em; }
+.pdl-otp-actions { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 6px; }
+button.pdl-link-btn { background: none; border: none; padding: 4px 2px; font-family: var(--sans); font-size: 13px; font-weight: 600; color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+button.pdl-link-btn:disabled { color: var(--muted-2); text-decoration: none; cursor: default; }
+.pdl-otp-sep { color: var(--muted-2); }
+/* Altura reservada: sem isso o layout salta quando o erro aparece. */
+.pdl-login-status { min-height: 20px; margin-top: 14px; max-width: 280px; font-family: var(--editorial); font-style: italic; font-size: 13px; color: var(--muted); line-height: 1.4; }
+.pdl-login-error { color: var(--terra-deep); font-style: normal; font-family: var(--sans); font-size: 13px; }
 .pdl-profile { padding: 0 0 80px; }
 .pdl-profile-hero { padding: 22px 22px 24px; display: flex; align-items: center; gap: 14px; border-bottom: 1px solid var(--border-soft); }
 .pdl-profile-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--cream-deep); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-weight: 500; font-size: 20px; color: var(--ink); flex-shrink: 0; }

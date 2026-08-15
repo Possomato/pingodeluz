@@ -2,14 +2,14 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Image from 'next/image';
 import PdlHeader from '@/components/PdlHeader';
 import PdlFooter from '@/components/PdlFooter';
 import PdlImg from '@/components/PdlImg';
-import { IconChevronLeft, IconBag, IconGoogle, IconArrowRight } from '@/components/Icons';
+import LoginPanel from '@/components/LoginPanel';
+import { IconChevronLeft, IconBag, IconArrowRight } from '@/components/Icons';
 import { useCart } from '@/context/CartContext';
 import { formatCEP, isValidCEP, fetchCEPData, extractAddressFromCEP } from '@/lib/cep';
-import { createBrowserClient } from '@supabase/ssr';
+import { createClient } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import { getAddressesAction, saveAddressAction, deleteAddressAction, type Address } from '@/app/actions/addresses';
 import { formatCentavos } from '@/lib/money';
@@ -36,7 +36,6 @@ function PerfilContent() {
   const [user, setUser] = useState<User | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [signingIn, setSigningIn] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [showAddrForm, setShowAddrForm] = useState(false);
@@ -50,10 +49,9 @@ function PerfilContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // Precisa ser o mesmo client do LoginPanel, senão o onAuthStateChange
+  // daqui não dispara quando o login por código conclui. Ver lib/supabase.
+  const supabase = createClient();
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 60);
@@ -94,18 +92,6 @@ function PerfilContent() {
       .catch(() => setOrders([]))
       .finally(() => setOrdersLoading(false));
   }, [user]);
-
-  const handleGoogle = async () => {
-    setSigningIn(true);
-    const redirect = searchParams.get('redirect') ?? '/perfil';
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${redirect}`,
-      },
-    });
-    // Page will redirect; no need to setSigningIn(false)
-  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -161,43 +147,9 @@ function PerfilContent() {
           </button>
         </div>
 
-        <div className="pdl-login">
-          <div style={{ maxWidth: '200px', margin: '0 auto 6px', width: '100%' }}>
-            <Image
-              src="/logo-transparente.png"
-              alt="Pingo de Luz"
-              width={200}
-              height={100}
-              priority
-              style={{ width: '100%', height: 'auto', display: 'block' }}
-            />
-          </div>
-
-          <h2 className="pdl-login-welcome">Bem-vinda <em>de volta.</em></h2>
-          <div className="pdl-login-sub">
-            Entre para ver seus pedidos, salvar endereços e acompanhar as peças favoritas.
-          </div>
-
-          <button className="pdl-google-btn" onClick={handleGoogle} disabled={signingIn}>
-            {signingIn ? (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" style={{ animation: 'pdl-spin 0.8s linear infinite' }}>
-                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" fill="none" strokeDasharray="44" strokeDashoffset="22" />
-                </svg>
-                entrando…
-              </>
-            ) : (
-              <>
-                <IconGoogle size={18} />
-                Entrar com Google
-              </>
-            )}
-          </button>
-
-          <div className="pdl-login-foot">
-            Ao continuar, você concorda com os <a href="#">Termos</a> e nossa <a href="#">Política de privacidade</a>. Não criamos senha — você entra sempre com sua conta Google.
-          </div>
-        </div>
+        {/* Sem `redirect` explícito, o login termina na home. Quem veio
+            do checkout continua voltando para lá. */}
+        <LoginPanel redirectTo={searchParams.get('redirect') ?? '/'} />
       </div>
     );
   }
