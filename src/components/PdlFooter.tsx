@@ -32,6 +32,7 @@ const COLS: FooterCol[] = [
       { label: 'Nossa história', href: '/sobre' },
       { label: 'Envio e trocas', href: '/trocas' },
       { label: 'Privacidade', href: '/privacidade' },
+      { label: 'Termos de uso', href: '/termos' },
     ],
   },
   {

@@ -9,6 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/sobre`, changeFrequency: 'yearly', priority: 0.4 },
     { url: `${BASE}/trocas`, changeFrequency: 'yearly', priority: 0.4 },
     { url: `${BASE}/privacidade`, changeFrequency: 'yearly', priority: 0.3 },
+    { url: `${BASE}/termos`, changeFrequency: 'yearly', priority: 0.3 },
     ...Object.keys(GENDER_DATA).map((id) => ({
       url: `${BASE}/genero/${id}`,
       changeFrequency: 'weekly' as const,
