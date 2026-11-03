@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { revalidatePath } from 'next/cache';
+import { paidAmountMatches } from './amount';
 import type { NormalizedPaymentStatus, PaymentNotification } from './types';
 
 /**
@@ -50,7 +51,7 @@ export async function processPaymentNotification(
   notification: PaymentNotification
 ): Promise<ProcessResult> {
   const service = createServiceClient();
-  const { orderId, status, externalPaymentId, method } = notification;
+  const { orderId, status, externalPaymentId, method, amountCentavos } = notification;
 
   // 1. Idempotência. A chave inclui o status, então uma transição real
   //    passa mas uma reentrega do mesmo evento é barrada aqui.
@@ -71,7 +72,7 @@ export async function processPaymentNotification(
   // 2. Carrega o pedido.
   const { data: order } = await service
     .from('orders')
-    .select('id, status, items, order_number')
+    .select('id, status, items, order_number, total_centavos')
     .eq('id', orderId)
     .maybeSingle();
 
@@ -100,6 +101,13 @@ export async function processPaymentNotification(
   let attentionReason: string | null = null;
 
   if (nextStatus === 'pago' && !wasPaid) {
+    // Pago a menos (ou a mais) do que o pedido vale: segue o fluxo, mas
+    // sinaliza para conferência manual antes de despachar.
+    if (!paidAmountMatches(amountCentavos, order.total_centavos as number)) {
+      needsAttention = true;
+      attentionReason = `Valor pago (${amountCentavos} centavos) difere do total do pedido (${order.total_centavos} centavos)`;
+    }
+
     const { error } = await service.rpc('decrement_stock', {
       items: order.items,
       p_order_id: orderId,
@@ -109,7 +117,9 @@ export async function processPaymentNotification(
       // O dinheiro já entrou: não dá para recusar o pedido. Marca para
       // resolução manual em vez de perder a venda em silêncio (ADR-3).
       needsAttention = true;
-      attentionReason = `Estoque não pôde ser baixado: ${error.message}`;
+      attentionReason = [attentionReason, `Estoque não pôde ser baixado: ${error.message}`]
+        .filter(Boolean)
+        .join(' | ');
     }
   }
 

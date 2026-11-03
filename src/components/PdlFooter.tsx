@@ -6,6 +6,12 @@ import { IconChevronDown } from '@/components/Icons';
 
 const PAYMENT_LOGOS = ['Pix', 'Visa', 'Mastercard', 'Elo', 'Hipercard'];
 
+// Dados legais da loja vêm do ambiente: sem eles o rodapé mostra só a marca,
+// em vez de um CNPJ fictício (ver ADR-6). Obrigatório divulgar razão social
+// e CNPJ para vender online (Decreto 7.962/2013) — preencher antes de abrir.
+const LEGAL_NAME = process.env.NEXT_PUBLIC_STORE_LEGAL_NAME;
+const CNPJ = process.env.NEXT_PUBLIC_STORE_CNPJ;
+
 type FooterCol = { title: string; links: { label: string; href?: string }[] };
 
 // Só links que levam a algum lugar. Itens sem destino foram removidos:
@@ -31,7 +37,7 @@ const COLS: FooterCol[] = [
   {
     title: 'Contato',
     links: [
-      { label: 'atendimento@pingodelu.com.br', href: 'mailto:atendimento@pingodelu.com.br' },
+      { label: 'atendimento@pingodeluz.com', href: 'mailto:atendimento@pingodeluz.com' },
     ],
   },
 ];
@@ -116,7 +122,8 @@ export default function PdlFooter() {
       </div>
 
       <div className="pdl-foot-bottom">
-        © 2026 PINGO DE LUZ · CNPJ 00.000.000/0001-00
+        © {new Date().getFullYear()} {LEGAL_NAME ?? 'PINGO DE LUZ'}
+        {CNPJ ? ` · CNPJ ${CNPJ}` : ''}
       </div>
     </footer>
   );

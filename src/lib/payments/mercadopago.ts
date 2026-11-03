@@ -1,5 +1,6 @@
 import MercadoPagoConfig, { Payment, Preference } from 'mercadopago';
 import { createHmac, timingSafeEqual } from 'crypto';
+import { reaisToCentavos } from './amount';
 import type {
   CreateCheckoutInput,
   CreateCheckoutResult,
@@ -189,6 +190,7 @@ export class MercadoPagoGateway implements PaymentGateway {
       orderId: data.external_reference,
       status: normalizeStatus(data.status),
       method: normalizeMethod(data.payment_method_id),
+      amountCentavos: reaisToCentavos(data.transaction_amount),
       raw: data,
     };
   }

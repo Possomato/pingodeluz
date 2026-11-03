@@ -31,9 +31,12 @@ const EMPTY_FORM = {
 export default function CheckoutClient({
   savedAddresses,
   profile,
+  paymentFailed = false,
 }: {
   savedAddresses: Address[];
   profile: Profile | null;
+  /** Volta do provedor com pagamento recusado/abandonado (?error=pagamento). */
+  paymentFailed?: boolean;
 }) {
   const router = useRouter();
   const { cart, hydrated } = useCart();
@@ -41,7 +44,9 @@ export default function CheckoutClient({
   const [scrolled, setScrolled] = useState(false);
   const [step, setStep] = useState(1);
   const [placing, setPlacing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    paymentFailed ? 'Não foi possível concluir o pagamento. Nada foi cobrado — tente novamente ou use outra forma de pagamento.' : null
+  );
 
   // Endereço: um dos salvos, ou um novo. Nada vem preenchido de fábrica.
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(

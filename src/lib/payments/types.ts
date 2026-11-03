@@ -64,6 +64,8 @@ export interface PaymentNotification {
   status: NormalizedPaymentStatus;
   /** 'pix' | 'credit_card' | 'boleto' | … já normalizado. */
   method?: string;
+  /** Valor efetivamente cobrado, em centavos, quando o provedor informa. */
+  amountCentavos?: number;
   raw: unknown;
 }
 

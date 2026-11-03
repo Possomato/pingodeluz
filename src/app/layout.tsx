@@ -20,6 +20,7 @@ const nunitoSans = Nunito_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://pingodeluz.com"),
   title: "Pingo de Luz · e-commerce infantil",
   description: "Roupas feitas com carinho para os pequenos pingos que iluminam a casa.",
 };
