@@ -7,9 +7,9 @@ export const metadata = { title: 'Pedido confirmado', robots: { index: false } }
 export default async function ConfirmacaoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ order_id?: string; pending?: string }>;
+  searchParams: Promise<{ order_id?: string }>;
 }) {
-  const { order_id: orderId, pending } = await searchParams;
+  const { order_id: orderId } = await searchParams;
   if (!orderId) redirect('/');
 
   // Lido pelo servidor com a sessão do cliente: a policy "own orders read"
@@ -17,5 +17,5 @@ export default async function ConfirmacaoPage({
   const order = await getMyOrderAction(orderId);
   if (!order) redirect('/');
 
-  return <ConfirmacaoClient order={order} pendingHint={pending === 'true'} />;
+  return <ConfirmacaoClient order={order} />;
 }

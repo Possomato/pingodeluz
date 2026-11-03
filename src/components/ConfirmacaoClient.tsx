@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sparkle } from '@/components/Icons';
 import { useCart } from '@/context/CartContext';
 import { formatCentavos } from '@/lib/money';
-import type { Order } from '@/app/actions/orders';
+import { getMyOrderAction, type Order } from '@/app/actions/orders';
 
 const PAYMENT_LABEL: Record<string, string> = {
   pix: 'Pix',
@@ -14,16 +14,16 @@ const PAYMENT_LABEL: Record<string, string> = {
   boleto: 'Boleto bancário',
 };
 
-export default function ConfirmacaoClient({
-  order,
-  pendingHint,
-}: {
-  order: Order;
-  pendingHint: boolean;
-}) {
+// Pix costuma confirmar em segundos; depois desse tempo, esperar mais um
+// pouco polling não ajuda — a pessoa já deve ter saído da tela.
+const POLL_INTERVAL_MS = 4000;
+const POLL_TIMEOUT_MS = 3 * 60 * 1000;
+
+export default function ConfirmacaoClient({ order: initialOrder }: { order: Order }) {
   const router = useRouter();
   const { clearCart } = useCart();
   const cleared = useRef(false);
+  const [order, setOrder] = useState(initialOrder);
 
   // O carrinho só é esvaziado aqui — se a pessoa desistir no provedor e
   // voltar para a loja, a sacola dela continua intacta.
@@ -33,7 +33,37 @@ export default function ConfirmacaoClient({
     if (order.status !== 'recusado' && order.status !== 'cancelado') clearCart();
   }, [order.status, clearCart]);
 
-  const isPending = pendingHint || order.status === 'pendente';
+  // Enquanto o pedido está pendente, o webhook ainda pode chegar a
+  // qualquer momento (Pix costuma levar segundos). Busca de novo até o
+  // status sair de "pendente" ou o tempo de espera se esgotar, para a
+  // pessoa não precisar recarregar a página à mão.
+  useEffect(() => {
+    if (order.status !== 'pendente') return;
+
+    let cancelled = false;
+    const startedAt = Date.now();
+
+    const interval = setInterval(async () => {
+      if (cancelled || Date.now() - startedAt > POLL_TIMEOUT_MS) {
+        clearInterval(interval);
+        return;
+      }
+
+      const fresh = await getMyOrderAction(order.id);
+      if (cancelled || !fresh) return;
+      if (fresh.status !== 'pendente') {
+        clearInterval(interval);
+        setOrder(fresh);
+      }
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [order.id, order.status]);
+
+  const isPending = order.status === 'pendente';
   const isRejected = order.status === 'recusado' || order.status === 'cancelado';
 
   const paymentLabel = order.paymentMethod
