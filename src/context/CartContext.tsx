@@ -25,11 +25,27 @@ interface CartContextType {
   setQty: (pid: string, size: string, qty: number) => void;
   removeItem: (pid: string, size: string) => void;
   clearCart: () => void;
+
+  /**
+   * Cupom digitado na sacola. Fica junto do carrinho para a pessoa não
+   * precisar digitar de novo no checkout — a validação de verdade é
+   * sempre do servidor, aqui guardamos só o código.
+   */
+  couponCode: string | null;
+  setCouponCode: (code: string | null) => void;
+
+  /** Mini-sacola que abre ao adicionar uma peça. */
+  bagOpen: boolean;
+  openBag: () => void;
+  closeBag: () => void;
+  /** Chave `pid-size` da última peça adicionada, para destacar na mini-sacola. */
+  lastAddedKey: string | null;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
 
 const STORAGE_KEY = 'pdl_cart_v1';
+const COUPON_KEY = 'pdl_coupon_v1';
 
 /**
  * O carrinho vive no navegador até o checkout. Um pedido só existe no
@@ -58,9 +74,22 @@ function readStoredCart(): CartItem[] {
   }
 }
 
+function readStoredCoupon(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(COUPON_KEY);
+    return raw && raw.trim() ? raw.trim().toUpperCase() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [couponCode, setCouponState] = useState<string | null>(null);
+  const [bagOpen, setBagOpen] = useState(false);
+  const [lastAddedKey, setLastAddedKey] = useState<string | null>(null);
 
   // Ler no efeito, não no useState inicial: o servidor não tem
   // localStorage, e divergir entre servidor e cliente quebraria a
@@ -69,6 +98,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setCart(readStoredCart());
+    setCouponState(readStoredCoupon());
     setHydrated(true);
   }, []);
 
@@ -80,6 +110,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Storage cheio ou bloqueado: o carrinho segue funcionando na sessão.
     }
   }, [cart, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      if (couponCode) window.localStorage.setItem(COUPON_KEY, couponCode);
+      else window.localStorage.removeItem(COUPON_KEY);
+    } catch {
+      // idem
+    }
+  }, [couponCode, hydrated]);
 
   const cartCount = cart.reduce((n, it) => n + it.qty, 0);
   const subtotalCentavos = cart.reduce((n, it) => n + it.priceCentavos * it.qty, 0);
@@ -94,6 +134,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       return [...prev, { ...item, qty }];
     });
+    setLastAddedKey(`${item.pid}-${item.size}`);
   }, []);
 
   const setQty = useCallback((pid: string, size: string, qty: number) => {
@@ -118,7 +159,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCart((prev) => prev.filter((it) => !(it.pid === pid && it.size === size)));
   }, []);
 
-  const clearCart = useCallback(() => setCart([]), []);
+  const clearCart = useCallback(() => {
+    setCart([]);
+    setCouponState(null);
+  }, []);
+
+  const setCouponCode = useCallback((code: string | null) => {
+    setCouponState(code ? code.trim().toUpperCase() || null : null);
+  }, []);
+
+  const openBag = useCallback(() => setBagOpen(true), []);
+  const closeBag = useCallback(() => setBagOpen(false), []);
 
   return (
     <CartContext.Provider
@@ -132,6 +183,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setQty,
         removeItem,
         clearCart,
+        couponCode,
+        setCouponCode,
+        bagOpen,
+        openBag,
+        closeBag,
+        lastAddedKey,
       }}
     >
       {children}

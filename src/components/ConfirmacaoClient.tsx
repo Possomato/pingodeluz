@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import PageWrapper from '@/components/PageWrapper';
 import { Sparkle } from '@/components/Icons';
 import { useCart } from '@/context/CartContext';
 import { formatCentavos } from '@/lib/money';
@@ -20,7 +21,6 @@ const POLL_INTERVAL_MS = 4000;
 const POLL_TIMEOUT_MS = 3 * 60 * 1000;
 
 export default function ConfirmacaoClient({ order: initialOrder }: { order: Order }) {
-  const router = useRouter();
   const { clearCart } = useCart();
   const cleared = useRef(false);
   const [order, setOrder] = useState(initialOrder);
@@ -76,9 +76,9 @@ export default function ConfirmacaoClient({ order: initialOrder }: { order: Orde
   const email = order.address?.email ?? '';
 
   return (
-    <div className="pdl-app">
+    <PageWrapper>
       <div className="pdl-confirm">
-        <div className="pdl-confirm-spark">
+        <div className={`pdl-confirm-spark ${isPending ? 'pending' : ''}`}>
           <Sparkle size={28} color="currentColor" />
         </div>
 
@@ -88,7 +88,7 @@ export default function ConfirmacaoClient({ order: initialOrder }: { order: Orde
             : <>Pedido <em>confirmado!</em></>}
         </h2>
 
-        <div className="num">nº {order.orderNumber}</div>
+        <div className="num">pedido {order.orderNumber}</div>
 
         <p>
           {isRejected ? (
@@ -107,7 +107,7 @@ export default function ConfirmacaoClient({ order: initialOrder }: { order: Orde
 
         <div className="pdl-confirm-summary">
           <div className="lbl">total</div>
-          <div className="val" style={{ fontSize: 22, fontWeight: 500, fontFamily: 'var(--serif)' }}>
+          <div className="val" style={{ fontSize: 20, fontWeight: 600, fontFamily: 'var(--sans)' }}>
             {formatCentavos(order.totalCentavos)}
           </div>
           <div className="lbl">pagamento</div>
@@ -125,16 +125,25 @@ export default function ConfirmacaoClient({ order: initialOrder }: { order: Orde
         </div>
 
         <div className="pdl-confirm-cta">
-          <button className="primary" onClick={() => router.push('/')}>continuar explorando</button>
-          <button className="secondary" onClick={() => router.push(`/pedido/${order.id}`)}>
-            acompanhar pedido
-          </button>
+          {isRejected ? (
+            <>
+              <Link href="/checkout" className="pdl-btn pdl-btn--primary pdl-btn--lg pdl-btn--block">tentar pagar de novo</Link>
+              <Link href="/" className="pdl-link">voltar para a loja</Link>
+            </>
+          ) : (
+            <>
+              <Link href={`/pedido/${order.id}`} className="pdl-btn pdl-btn--primary pdl-btn--lg pdl-btn--block">acompanhar pedido</Link>
+              <Link href="/" className="pdl-link">continuar explorando</Link>
+            </>
+          )}
         </div>
 
-        <div style={{ marginTop: 36, padding: '20px 0', borderTop: '1px solid var(--border-soft)', fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 14, color: 'var(--muted)', textAlign: 'center', maxWidth: 280 }}>
-          &ldquo;Quando chegar, mande uma foto pra gente?<br />adoramos ver os pingos vestidos.&rdquo;
-        </div>
+        {!isRejected && (
+          <div className="pdl-confirm-quote">
+            &ldquo;Quando chegar, mande uma foto pra gente?<br />adoramos ver os pingos vestidos.&rdquo;
+          </div>
+        )}
       </div>
-    </div>
+    </PageWrapper>
   );
 }

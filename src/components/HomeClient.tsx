@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import PdlHeader from '@/components/PdlHeader';
-import PdlDrawer from '@/components/PdlDrawer';
-import PdlFooter from '@/components/PdlFooter';
+import { useState } from 'react';
+import Link from 'next/link';
+import PageWrapper from '@/components/PageWrapper';
 import PdlImg from '@/components/PdlImg';
+import ProductCard from '@/components/ProductCard';
 import InstagramFeed from '@/components/InstagramFeed';
 import { Sparkle, IconArrowRight } from '@/components/Icons';
 import type { Product, Collection, HomepageSection, HomepageSectionId, Testimonial } from '@/lib/data';
-import { formatCentavos } from '@/lib/money';
 
 interface Props {
   hpConfig: Record<HomepageSectionId, HomepageSection>;
@@ -19,21 +17,11 @@ interface Props {
 }
 
 export default function HomeClient({ hpConfig, products, collections, testimonials }: Props) {
-  const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [testIdx, setTestIdx] = useState(0);
-
-  useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 60);
-    window.addEventListener('scroll', handler, { passive: true });
-    return () => window.removeEventListener('scroll', handler);
-  }, []);
+  const collectionList = Object.values(collections);
 
   return (
-    <div className="pdl-app">
-      <PdlHeader scrolled={scrolled} onMenu={() => setMenuOpen(true)} />
-
+    <PageWrapper>
       <div className="pdl-welcome">
         <div className="eyebrow">olá, mãe</div>
         <h1>Para quem você procura <em>hoje?</em></h1>
@@ -41,7 +29,7 @@ export default function HomeClient({ hpConfig, products, collections, testimonia
       </div>
       <div className="pdl-genders">
         {hpConfig.meninas.visible && (
-          <div className="pdl-gender-card" onClick={() => router.push('/genero/meninas')}>
+          <Link href="/genero/meninas" className="pdl-gender-card">
             <PdlImg tint="rose" imageUrl={hpConfig.meninas.imageUrls[0]} label="meninas · 1m–14" />
             <div className="pdl-gender-overlay">
               <span className="top">1m–14</span>
@@ -51,10 +39,10 @@ export default function HomeClient({ hpConfig, products, collections, testimonia
                 <span className="arrow">explorar <IconArrowRight size={11} /></span>
               </div>
             </div>
-          </div>
+          </Link>
         )}
         {hpConfig.meninos.visible && (
-          <div className="pdl-gender-card" onClick={() => router.push('/genero/meninos')}>
+          <Link href="/genero/meninos" className="pdl-gender-card">
             <PdlImg tint="ochre" imageUrl={hpConfig.meninos.imageUrls[0]} label="meninos · 1m–14" />
             <div className="pdl-gender-overlay">
               <span className="top">1m–14</span>
@@ -64,31 +52,19 @@ export default function HomeClient({ hpConfig, products, collections, testimonia
                 <span className="arrow">explorar <IconArrowRight size={11} /></span>
               </div>
             </div>
-          </div>
+          </Link>
         )}
       </div>
 
-      {hpConfig.queridos.visible && (
-        <div className="pdl-section">
+      {hpConfig.queridos.visible && products.length > 0 && (
+        <section className="pdl-section" aria-labelledby="queridos">
           <div className="pdl-section-head">
-            <h2>Mais <em>queridos</em></h2>
-            <span className="more">ver todos</span>
+            <h2 id="queridos">Mais <em>queridos</em></h2>
           </div>
           <div className="pdl-products">
-            {products.map(p => (
-              <div key={p.id} className="pdl-prod" onClick={() => router.push(`/produto/${p.id}`)}>
-                <PdlImg tint={p.tint} imageUrl={p.imageUrl} label={p.label} />
-                <div className="pdl-prod-info">
-                  <div className="pdl-prod-name">{p.name}</div>
-                  <div className="pdl-prod-meta">
-                    <span className="pdl-prod-col">{p.col}</span>
-                    <span className="pdl-prod-price">{formatCentavos(p.priceCentavos)}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+            {products.map(p => <ProductCard key={p.id} p={p} />)}
           </div>
-        </div>
+        </section>
       )}
 
       {hpConfig.manifesto.visible && (
@@ -102,33 +78,32 @@ export default function HomeClient({ hpConfig, products, collections, testimonia
         </div>
       )}
 
-      {hpConfig.colecoes.visible && (
-        <div className="pdl-section">
+      {hpConfig.colecoes.visible && collectionList.length > 0 && (
+        <section className="pdl-section" id="colecoes" aria-labelledby="colecoes-title" style={{ scrollMarginTop: 'var(--header-h)' }}>
           <div className="pdl-section-head">
-            <h2>Coleções <em>conceituais</em></h2>
-            <span className="more">ver todas <IconArrowRight size={10} /></span>
+            <h2 id="colecoes-title">Coleções <em>conceituais</em></h2>
           </div>
           <div className="pdl-collections">
-            {Object.values(collections).map(col => (
-              <div key={col.id} className="pdl-col-card" onClick={() => router.push(`/colecao/${col.id}`)}>
+            {collectionList.map(col => (
+              <Link key={col.id} href={`/colecao/${col.id}`} className="pdl-col-card">
                 <PdlImg tint={col.tint} imageUrl={col.imageUrl} label={`lookbook · ${col.name.join(' ').toLowerCase()}`} />
                 <div className="pdl-col-overlay">
-                  {col.eyebrow && <span className="pdl-col-tag">{col.eyebrow}</span>}
+                  {col.eyebrow ? <span className="pdl-col-tag">{col.eyebrow}</span> : <span />}
                   <div>
                     <div className="pdl-col-name">{col.name[0]}<em>{col.name[1]}</em></div>
-                    {col.count > 0 && <div className="pdl-col-meta">— {col.count} peças · coleção atual</div>}
+                    {col.count > 0 && <div className="pdl-col-meta">{col.count} {col.count === 1 ? 'peça' : 'peças'} · coleção atual</div>}
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {hpConfig.fases.visible && (
-        <div className="pdl-section">
+        <section className="pdl-section" aria-labelledby="fases">
           <div className="pdl-section-head">
-            <h2>Para cada <em>fase</em></h2>
+            <h2 id="fases">Para cada <em>fase</em></h2>
           </div>
           <div className="pdl-ages">
             <div className="pdl-age">
@@ -153,38 +128,40 @@ export default function HomeClient({ hpConfig, products, collections, testimonia
               <div className="pdl-age-desc">já escolhem sozinhos o que vestir</div>
             </div>
           </div>
-        </div>
+        </section>
       )}
 
       {hpConfig.depoimentos.visible && testimonials.length > 0 && (
-        <div className="pdl-section">
+        <section className="pdl-section" aria-labelledby="depoimentos">
           <div className="pdl-section-head">
-            <h2>O que dizem as <em>mães</em></h2>
+            <h2 id="depoimentos">O que dizem as <em>mães</em></h2>
           </div>
           <div className="pdl-test">
-            <div className="pdl-test-card">
+            <div className="pdl-test-card" key={testimonials[testIdx]?.id}>
               <div className="pdl-test-quote">{testimonials[testIdx]?.quote}</div>
               <div className="pdl-test-author">
-                <div className="pdl-test-avatar" />
+                <div className="pdl-test-avatar" aria-hidden>{testimonials[testIdx]?.author?.charAt(0)}</div>
                 <div>
                   <div style={{ color: 'var(--ink)', fontWeight: 500 }}>{testimonials[testIdx]?.author}</div>
                   <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic' }}>{testimonials[testIdx]?.role}</div>
                 </div>
               </div>
             </div>
-            <div className="pdl-test-dots">
-              {testimonials.map((tst, i) => (
-                <button
-                  key={tst.id}
-                  type="button"
-                  className={`pdl-test-dot ${i === testIdx ? 'active' : ''}`}
-                  onClick={() => setTestIdx(i)}
-                  aria-label={`Depoimento ${i + 1} de ${testimonials.length}`}
-                />
-              ))}
-            </div>
+            {testimonials.length > 1 && (
+              <div className="pdl-test-dots">
+                {testimonials.map((tst, i) => (
+                  <button
+                    key={tst.id}
+                    type="button"
+                    className={`pdl-test-dot ${i === testIdx ? 'active' : ''}`}
+                    onClick={() => setTestIdx(i)}
+                    aria-label={`Depoimento ${i + 1} de ${testimonials.length}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        </div>
+        </section>
       )}
 
       {false && hpConfig.instagram.visible && (
@@ -196,7 +173,6 @@ export default function HomeClient({ hpConfig, products, collections, testimonia
               target="_blank"
               rel="noopener noreferrer"
               className="more"
-              style={{ textDecoration: 'none' }}
             >
               @pingodeluz
             </a>
@@ -204,9 +180,6 @@ export default function HomeClient({ hpConfig, products, collections, testimonia
           <InstagramFeed />
         </div>
       )}
-
-      <PdlFooter />
-      <PdlDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
-    </div>
+    </PageWrapper>
   );
 }

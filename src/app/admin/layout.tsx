@@ -1,3 +1,5 @@
+import './admin.css';
+
 export const metadata = {
   title: 'Painel · Pingo de Luz',
   // O painel nunca deve aparecer em buscador.

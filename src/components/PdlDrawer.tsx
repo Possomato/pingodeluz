@@ -1,9 +1,11 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Logo from './Logo';
 import SearchBox from './SearchBox';
 import { IconX, IconArrowRight } from './Icons';
+import { useCart } from '@/context/CartContext';
 
 interface PdlDrawerProps {
   open: boolean;
@@ -12,6 +14,14 @@ interface PdlDrawerProps {
 
 export default function PdlDrawer({ open, onClose }: PdlDrawerProps) {
   const router = useRouter();
+  const { cartCount, openBag } = useCart();
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
 
   const handle = (path: string) => {
     onClose();
@@ -21,9 +31,9 @@ export default function PdlDrawer({ open, onClose }: PdlDrawerProps) {
   return (
     <>
       <div className={`pdl-drawer-backdrop ${open ? 'open' : ''}`} onClick={onClose} />
-      <div className={`pdl-drawer ${open ? 'open' : ''}`}>
+      <div className={`pdl-drawer ${open ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label="Menu" aria-hidden={!open}>
         <div className="pdl-drawer-head">
-          <Logo />
+          <Logo onClick={() => handle('/')} />
           <button className="pdl-drawer-close" onClick={onClose} aria-label="Fechar menu">
             <IconX size={16} />
           </button>
@@ -38,75 +48,46 @@ export default function PdlDrawer({ open, onClose }: PdlDrawerProps) {
 
         <div className="pdl-drawer-section">
           <h4>comprar</h4>
-          <div className="pdl-drawer-link" onClick={() => handle('/genero/meninas')}>
+          <button className="pdl-drawer-link" onClick={() => handle('/genero/meninas')}>
             <span>Para <em>meninas</em></span>
-            <span className="meta">1–12 anos</span>
-          </div>
-          <div className="pdl-drawer-link" onClick={() => handle('/genero/meninos')}>
+            <span className="meta">1m–14 anos</span>
+          </button>
+          <button className="pdl-drawer-link" onClick={() => handle('/genero/meninos')}>
             <span>Para <em>meninos</em></span>
-            <span className="meta">1–12 anos</span>
-          </div>
-          <div className="pdl-drawer-link" onClick={() => handle('/')}>
-            <span>Mais <em>queridos</em></span>
-            <span className="meta">+ vendidos</span>
-          </div>
-        </div>
-
-        <div className="pdl-drawer-section">
-          <h4>por idade</h4>
-          <div className="pdl-drawer-sub" onClick={() => handle('/genero/meninas')}>
-            Recém-chegados · 0–2 anos
-          </div>
-          <div className="pdl-drawer-sub" onClick={() => handle('/genero/meninas')}>
-            Descobridores · 3–6 anos
-          </div>
-          <div className="pdl-drawer-sub" onClick={() => handle('/genero/meninas')}>
-            Aventureiros · 7–12 anos
-          </div>
-        </div>
-
-        <div className="pdl-drawer-section">
-          <h4>coleções conceituais</h4>
-          <div className="pdl-drawer-link" onClick={() => handle('/colecao/jardim')}>
-            <span>Jardim <em>Encantado</em></span>
-            <span className="meta">atual</span>
-          </div>
-          <div className="pdl-drawer-link" onClick={() => handle('/colecao/doce')}>
-            <span>Doce <em>Aventura</em></span>
-            <span className="meta">atual</span>
-          </div>
-          <div className="pdl-drawer-sub" style={{ paddingTop: 12 }}>
-            Arquivo de coleções
-          </div>
+            <span className="meta">1m–14 anos</span>
+          </button>
+          <button className="pdl-drawer-link" onClick={() => handle('/#colecoes')}>
+            <span>Coleções <em>conceituais</em></span>
+            <span className="meta">lookbooks</span>
+          </button>
         </div>
 
         <div className="pdl-drawer-section">
           <h4>minha conta</h4>
-          <div className="pdl-drawer-link" onClick={() => handle('/perfil')}>
+          <button className="pdl-drawer-link" onClick={() => handle('/perfil')}>
             <span>Sua <em>conta</em></span>
             <span className="meta">pedidos · endereços</span>
-          </div>
-          <div className="pdl-drawer-sub" onClick={() => handle('/carrinho')}>
-            Sua sacola
-          </div>
+          </button>
+          <button className="pdl-drawer-sub" onClick={() => { onClose(); setTimeout(openBag, 200); }}>
+            Sua sacola{cartCount > 0 ? ` · ${cartCount} ${cartCount === 1 ? 'peça' : 'peças'}` : ''}
+          </button>
         </div>
 
         <div className="pdl-drawer-section">
-          <h4>institucional</h4>
-          <div className="pdl-drawer-sub">Nossa história</div>
-          <div className="pdl-drawer-sub">Como fazemos</div>
-          <div className="pdl-drawer-sub">Guia de tamanhos</div>
-          <div className="pdl-drawer-sub">Trocas e devoluções</div>
+          <h4>a pingo de luz</h4>
+          <button className="pdl-drawer-sub" onClick={() => handle('/sobre')}>Nossa história</button>
+          <button className="pdl-drawer-sub" onClick={() => handle('/trocas')}>Envio e trocas</button>
+          <button className="pdl-drawer-sub" onClick={() => handle('/privacidade')}>Privacidade</button>
+          <button className="pdl-drawer-sub" onClick={() => handle('/termos')}>Termos de uso</button>
         </div>
 
         <div className="pdl-drawer-foot">
           <div className="contact">
-            atendimento@pingodeluz.com<br />
-            WhatsApp · (11) 9 8000-0000
+            atendimento@pingodeluz.com
           </div>
-          <div className="ig">
+          <a className="ig" href="https://instagram.com/pingodeluz" target="_blank" rel="noopener noreferrer">
             @pingodeluz <IconArrowRight size={11} />
-          </div>
+          </a>
         </div>
       </div>
     </>

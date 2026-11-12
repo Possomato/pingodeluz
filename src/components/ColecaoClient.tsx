@@ -1,105 +1,83 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import PdlHeader from '@/components/PdlHeader';
-import PdlDrawer from '@/components/PdlDrawer';
-import PdlFooter from '@/components/PdlFooter';
+import { useState } from 'react';
+import PageWrapper from '@/components/PageWrapper';
 import PdlImg from '@/components/PdlImg';
-import { IconChevronDown } from '@/components/Icons';
+import ProductCard from '@/components/ProductCard';
 import { AGE_GROUPS, type Collection } from '@/lib/data';
-import { formatCentavos } from '@/lib/money';
 
 export default function ColecaoClient({ c, filters }: { c: Collection; filters: string[] }) {
-  const router = useRouter();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [filter, setFilter] = useState('todas');
 
-  useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 280);
-    window.addEventListener('scroll', handler, { passive: true });
-    return () => window.removeEventListener('scroll', handler);
-  }, []);
+  const visible = filter === 'todas'
+    ? c.products
+    : c.products.filter(p => {
+        const ageGroup = AGE_GROUPS.find(g => g.label === filter);
+        if (ageGroup) return (p.sizes ?? []).some(s => ageGroup.sizes.includes(s));
+        return p.type === filter;
+      });
 
   return (
-    <div className="pdl-app">
-      <PdlHeader scrolled={scrolled} onMenu={() => setMenuOpen(true)} />
-
+    <PageWrapper>
       <div className="pdl-coll-hero pdl-colpage-hero">
         <PdlImg tint={c.tint} imageUrl={c.imageUrl} label={`editorial · ${c.name.join(' ').toLowerCase()}`} style={{ position: 'absolute', inset: 0 }} />
         <div className="pdl-coll-hero-overlay">
           <div className="pdl-coll-hero-top">
             <div className="pdl-coll-hero-eyebrow">{c.eyebrow}</div>
-            <div className="pdl-coll-hero-num">N.º 12</div>
+            <div className="pdl-coll-hero-num">{c.count} {c.count === 1 ? 'peça' : 'peças'}</div>
           </div>
           <div className="pdl-coll-hero-bottom">
-            <div className="pdl-coll-hero-title">
+            <h1 className="pdl-coll-hero-title">
               {c.name[0]}
               <em>{c.name[1]}</em>
-            </div>
+            </h1>
           </div>
         </div>
       </div>
 
       <div className="pdl-sidebar-layout">
-        <div className="pdl-sidebar">
+        <aside className="pdl-sidebar">
           <div className="pdl-sidebar-title">{c.name[0]} <em>{c.name[1]}</em></div>
-          <div className="pdl-sidebar-intro">{c.intro}</div>
-          <div className="pdl-sidebar-filter-label">filtrar por</div>
-          <div className="pdl-sidebar-filters">
-            {filters.map(f => (
-              <div key={f} className={`pdl-sidebar-filter ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>{f}</div>
-            ))}
-          </div>
-        </div>
+          <p className="pdl-sidebar-intro">{c.intro}</p>
+          {filters.length > 1 && (
+            <>
+              <div className="pdl-sidebar-filter-label">filtrar por</div>
+              <div className="pdl-sidebar-filters">
+                {filters.map(f => (
+                  <button key={f} type="button" className={`pdl-sidebar-filter ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>{f}</button>
+                ))}
+              </div>
+            </>
+          )}
+        </aside>
         <div>
-          <div className="pdl-coll-filters">
-            {filters.map(f => (
-              <button key={f} className={`pdl-chip ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
-                {f}
-              </button>
-            ))}
-          </div>
+          {filters.length > 1 && (
+            <div className="pdl-coll-filters">
+              {filters.map(f => (
+                <button key={f} className={`pdl-chip ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
+                  {f}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="pdl-coll-info-row">
-            <span>{c.count} peças · {c.name.join(' ').toLowerCase()}</span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              ordenar <IconChevronDown size={12} />
-            </span>
+            <span>{visible.length} {visible.length === 1 ? 'peça' : 'peças'}{filter !== 'todas' ? ` · ${filter}` : ''}</span>
           </div>
           <div className="pdl-coll-grid">
-            {(filter === 'todas'
-              ? c.products
-              : c.products.filter(p => {
-                  const ageGroup = AGE_GROUPS.find(g => g.label === filter);
-                  if (ageGroup) return (p.sizes ?? []).some(s => ageGroup.sizes.includes(s));
-                  return p.type === filter;
-                })
-            ).map(p => (
-              <div key={p.id} className="pdl-prod" onClick={() => router.push(`/produto/${p.id}`)}>
-                <PdlImg tint={p.tint} imageUrl={p.imageUrl} label={p.label} />
-                <div className="pdl-prod-info">
-                  <div className="pdl-prod-name">{p.name}</div>
-                  <div className="pdl-prod-meta">
-                    <span className="pdl-prod-col">{c.name.join(' ')}</span>
-                    <span className="pdl-prod-price">{formatCentavos(p.priceCentavos)}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+            {visible.map(p => <ProductCard key={p.id} p={p} colLabel={c.name.join(' ')} />)}
           </div>
-          <div style={{ padding: '40px 0', textAlign: 'center' }}>
-            <div className="pdl-eyebrow" style={{ marginBottom: 10 }}>fim da coleção</div>
-            <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 16, color: 'var(--ink-soft)' }}>
+          {visible.length === 0 && (
+            <div className="pdl-coll-empty">Nenhuma peça encontrada para este filtro.</div>
+          )}
+          <div className="pdl-coll-end">
+            <div className="pdl-eyebrow">fim da coleção</div>
+            <div className="pdl-lead">
               Cada peça é feita em pequeno lote.<br />
               Quando acaba, vira memória.
             </div>
           </div>
         </div>
       </div>
-
-      <PdlFooter />
-      <PdlDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
-    </div>
+    </PageWrapper>
   );
 }

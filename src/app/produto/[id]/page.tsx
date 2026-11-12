@@ -82,7 +82,7 @@ export default async function ProdutoPage({ params }: { params: Promise<{ id: st
         paymentConfig={paymentConfig}
         colIntro={collection?.intro ?? ''}
         related={related}
-        shippingInfo={shipping.shippingInfo}
+        shipping={shipping}
       />
     </>
   );

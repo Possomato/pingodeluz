@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { IconChevronDown } from '@/components/Icons';
 
 const PAYMENT_LOGOS = ['Pix', 'Visa', 'Mastercard', 'Elo', 'Hipercard'];
@@ -12,18 +12,18 @@ const PAYMENT_LOGOS = ['Pix', 'Visa', 'Mastercard', 'Elo', 'Hipercard'];
 const LEGAL_NAME = process.env.NEXT_PUBLIC_STORE_LEGAL_NAME;
 const CNPJ = process.env.NEXT_PUBLIC_STORE_CNPJ;
 
-type FooterCol = { title: string; links: { label: string; href?: string }[] };
+type FooterCol = { title: string; links: { label: string; href: string }[] };
 
-// Só links que levam a algum lugar. Itens sem destino foram removidos:
-// um rodapé cheio de rótulos que não clicam é pior do que um rodapé curto.
-// As coleções não estão aqui porque mudam — elas aparecem na home.
+// Só links que levam a algum lugar. As coleções não estão aqui porque
+// mudam — elas aparecem na home.
 const COLS: FooterCol[] = [
   {
     title: 'Navegação',
     links: [
       { label: 'Meninas', href: '/genero/meninas' },
       { label: 'Meninos', href: '/genero/meninos' },
-      { label: 'Buscar', href: '/busca' },
+      { label: 'Coleções', href: '/#colecoes' },
+      { label: 'Minha conta', href: '/perfil' },
     ],
   },
   {
@@ -39,25 +39,22 @@ const COLS: FooterCol[] = [
     title: 'Contato',
     links: [
       { label: 'atendimento@pingodeluz.com', href: 'mailto:atendimento@pingodeluz.com' },
+      { label: '@pingodeluz', href: 'https://instagram.com/pingodeluz' },
     ],
   },
 ];
 
+function FootLink({ href, label }: { href: string; label: string }) {
+  const external = href.startsWith('http') || href.startsWith('mailto:');
+  return external
+    ? <a href={href} target={href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer">{label}</a>
+    : <Link href={href}>{label}</Link>;
+}
+
 export default function PdlFooter() {
-  const router = useRouter();
   const [openCol, setOpenCol] = useState<string | null>(null);
 
   const toggle = (title: string) => setOpenCol(openCol === title ? null : title);
-
-  const handleLink = (href?: string) => {
-    if (!href) return;
-    // mailto: e tel: não passam pelo roteador do Next.
-    if (href.startsWith('mailto:') || href.startsWith('tel:')) {
-      window.open(href, '_self');
-      return;
-    }
-    router.push(href);
-  };
 
   return (
     <footer className="pdl-footer">
@@ -70,44 +67,32 @@ export default function PdlFooter() {
         que iluminam a casa.
       </div>
 
-      {/* Desktop: columns side by side */}
+      {/* Desktop: colunas lado a lado */}
       <div className="pdl-foot-links">
         {COLS.map(col => (
           <div key={col.title} className="pdl-foot-col">
             <h4>{col.title}</h4>
             <ul>
               {col.links.map(link => (
-                <li
-                  key={link.label}
-                  onClick={() => handleLink(link.href)}
-                  style={link.href ? { cursor: 'pointer' } : undefined}
-                >
-                  {link.label}
-                </li>
+                <li key={link.label}><FootLink {...link} /></li>
               ))}
             </ul>
           </div>
         ))}
       </div>
 
-      {/* Mobile: columns as accordions */}
+      {/* Mobile: colunas como acordeões */}
       <div className="pdl-foot-accordions">
         {COLS.map(col => (
           <div key={col.title} className="pdl-foot-acc">
-            <div className="pdl-foot-acc-head" onClick={() => toggle(col.title)}>
+            <button type="button" className="pdl-foot-acc-head" onClick={() => toggle(col.title)} aria-expanded={openCol === col.title}>
               <span>{col.title}</span>
               <IconChevronDown size={13} />
-            </div>
+            </button>
             {openCol === col.title && (
               <ul className="pdl-foot-acc-body">
                 {col.links.map(link => (
-                  <li
-                    key={link.label}
-                    onClick={() => handleLink(link.href)}
-                    style={link.href ? { cursor: 'pointer' } : undefined}
-                  >
-                    {link.label}
-                  </li>
+                  <li key={link.label}><FootLink {...link} /></li>
                 ))}
               </ul>
             )}
@@ -115,7 +100,6 @@ export default function PdlFooter() {
         ))}
       </div>
 
-      {/* Payment logos */}
       <div className="pdl-foot-payment">
         {PAYMENT_LOGOS.map(name => (
           <span key={name} className="pdl-foot-payment-badge">{name}</span>

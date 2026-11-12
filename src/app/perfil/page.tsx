@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import PdlHeader from '@/components/PdlHeader';
-import PdlFooter from '@/components/PdlFooter';
-import PdlImg from '@/components/PdlImg';
+import PageWrapper from '@/components/PageWrapper';
+import ProductCard from '@/components/ProductCard';
 import LoginPanel from '@/components/LoginPanel';
-import { IconChevronLeft, IconBag, IconArrowRight } from '@/components/Icons';
-import { useCart } from '@/context/CartContext';
+import HeartButton from '@/components/HeartButton';
+import { IconArrowRight } from '@/components/Icons';
 import { formatCEP, isValidCEP, fetchCEPData, extractAddressFromCEP } from '@/lib/cep';
 import { createClient } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
@@ -15,7 +15,6 @@ import { getAddressesAction, saveAddressAction, deleteAddressAction, type Addres
 import { formatCentavos } from '@/lib/money';
 import { getFavoriteProductsAction } from '@/app/actions/favorites';
 import { getMyOrdersAction, type Order } from '@/app/actions/orders';
-import HeartButton from '@/components/HeartButton';
 import type { Product } from '@/lib/data';
 
 /** Status do banco → rótulo em português e classe do chip. */
@@ -29,22 +28,25 @@ const ORDER_STATUS: Record<string, { label: string; kind: string }> = {
   reembolsado: { label: 'reembolsado', kind: 'cancelado' },
 };
 
+const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+
+const EMPTY_ADDR = { label: 'Casa', zip: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' };
+type AddrForm = typeof EMPTY_ADDR;
+
 function PerfilContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { cartCount } = useCart();
   const [user, setUser] = useState<User | null>(null);
-  const [scrolled, setScrolled] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [showMenu, setShowMenu] = useState(false);
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [showAddrForm, setShowAddrForm] = useState(false);
   const [showEditName, setShowEditName] = useState(false);
   const [editingName, setEditingName] = useState('');
   const [cepError, setCepError] = useState<string | null>(null);
   const [cepLoading, setCepLoading] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof typeof newAddr, boolean>>>({});
-  const [newAddr, setNewAddr] = useState({ label: 'Casa', zip: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' });
+  const [saving, setSaving] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<Partial<Record<keyof AddrForm, boolean>>>({});
+  const [newAddr, setNewAddr] = useState<AddrForm>(EMPTY_ADDR);
   const [favoritedProducts, setFavoritedProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
@@ -52,12 +54,6 @@ function PerfilContent() {
   // Precisa ser o mesmo client do LoginPanel, senão o onAuthStateChange
   // daqui não dispara quando o login por código conclui. Ver lib/supabase.
   const supabase = createClient();
-
-  useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 60);
-    window.addEventListener('scroll', handler, { passive: true });
-    return () => window.removeEventListener('scroll', handler);
-  }, []);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -98,9 +94,14 @@ function PerfilContent() {
     router.push('/');
   };
 
+  const setField = (k: keyof AddrForm, v: string) => {
+    setNewAddr(prev => ({ ...prev, [k]: v }));
+    setValidationErrors(prev => ({ ...prev, [k]: false }));
+  };
+
   const handleCEPChange = async (value: string) => {
     const formatted = formatCEP(value);
-    setNewAddr(prev => ({ ...prev, zip: formatted }));
+    setField('zip', formatted);
     setCepError(null);
 
     if (!isValidCEP(formatted)) {
@@ -125,45 +126,91 @@ function PerfilContent() {
       city: extracted.city,
       state: extracted.state,
     }));
+    setValidationErrors(prev => ({ ...prev, street: false, neighborhood: false, city: false, state: false }));
+    document.getElementById('addr-number')?.focus();
+  };
+
+  const saveNewAddress = async () => {
+    const errors: Partial<Record<keyof AddrForm, boolean>> = {};
+    if (!newAddr.label.trim()) errors.label = true;
+    if (!newAddr.zip.trim() || cepError || !isValidCEP(newAddr.zip)) errors.zip = true;
+    if (!newAddr.street.trim()) errors.street = true;
+    if (!newAddr.number.trim()) errors.number = true;
+    if (!newAddr.neighborhood.trim()) errors.neighborhood = true;
+    if (!newAddr.city.trim()) errors.city = true;
+    if (!newAddr.state.trim()) errors.state = true;
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors({});
+    setSaving(true);
+    try {
+      await saveAddressAction(newAddr);
+      const updated = await getAddressesAction();
+      setAddresses(updated);
+      setShowAddrForm(false);
+      setNewAddr(EMPTY_ADDR);
+      setCepError(null);
+    } catch (error) {
+      console.error('Erro ao salvar endereço:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveName = async () => {
+    if (!editingName.trim()) return;
+    const { error } = await supabase.auth.updateUser({ data: { full_name: editingName.trim() } });
+    if (!error) {
+      setUser(u => u ? { ...u, user_metadata: { ...u.user_metadata, full_name: editingName.trim() } } : null);
+      setShowEditName(false);
+    }
   };
 
   if (loading) {
-    return null;
+    return <PageWrapper footer={false}><div style={{ minHeight: '60vh' }} /></PageWrapper>;
   }
 
-  const userName = user?.user_metadata?.full_name ?? user?.email ?? 'Cliente';
-  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
-  const userInitial = userName.charAt(0).toUpperCase();
-
   if (!user) {
+    // Sem `redirect` explícito, o login termina na home. Quem veio do
+    // checkout continua voltando para lá.
     return (
-      <div className="pdl-app">
-        <div className={`pdl-back-bar ${scrolled ? 'solid' : ''}`}>
-          <button onClick={() => router.back()} aria-label="Voltar"><IconChevronLeft size={18} /></button>
-          <span className="pdl-back-title">Entrar</span>
-          <button onClick={() => router.push('/carrinho')} aria-label="Sacola" style={{ position: 'relative' }}>
-            <IconBag size={16} />
-            {cartCount > 0 && <span className="pdl-bag-count">{cartCount}</span>}
-          </button>
-        </div>
-
-        {/* Sem `redirect` explícito, o login termina na home. Quem veio
-            do checkout continua voltando para lá. */}
+      <PageWrapper>
         <LoginPanel redirectTo={searchParams.get('redirect') ?? '/'} />
-      </div>
+      </PageWrapper>
     );
   }
 
-  return (
-    <div className="pdl-app">
-      <PdlHeader scrolled={scrolled} onMenu={() => setShowMenu(!showMenu)} />
+  const userName = user.user_metadata?.full_name ?? user.email ?? 'Cliente';
+  const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
+  const userInitial = userName.charAt(0).toUpperCase();
+  const provider = user.app_metadata?.provider;
 
+  const addrField = (id: keyof AddrForm, label: string, extra?: React.InputHTMLAttributes<HTMLInputElement>) => (
+    <div className="pdl-field-group">
+      <label className="pdl-field-label" htmlFor={`addr-${id}`}>{label}</label>
+      <input
+        id={`addr-${id}`}
+        className={`pdl-field${validationErrors[id] ? ' pdl-field--error' : ''}`}
+        value={newAddr[id]}
+        onChange={e => setField(id, e.target.value)}
+        aria-invalid={!!validationErrors[id]}
+        {...extra}
+      />
+    </div>
+  );
+
+  return (
+    <PageWrapper>
       <div className="pdl-profile">
         <div className="pdl-profile-hero">
           <div className="pdl-profile-avatar">
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarUrl} alt={userName} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+              <img src={avatarUrl} alt={userName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               userInitial
             )}
@@ -174,434 +221,203 @@ function PerfilContent() {
             <div className="email">{user.email}</div>
           </div>
           <button
-            onClick={() => {
-              setShowEditName(true);
-              setEditingName(userName);
-            }}
-            style={{
-              marginLeft: 'auto',
-              fontSize: 12,
-              fontFamily: 'var(--editorial)',
-              fontStyle: 'italic',
-              color: 'var(--terra)',
-              background: 'none',
-              border: 'none',
-              textDecoration: 'underline',
-              cursor: 'pointer',
-              padding: 0,
-            }}
+            className="pdl-link"
+            onClick={() => { setShowEditName(true); setEditingName(userName); }}
           >
-            Alterar meu nome
+            alterar meu nome
           </button>
         </div>
 
-        <div className="pdl-profile-section">
-          <h3><span>Meus <em>endereços</em></span></h3>
+        <section className="pdl-profile-section">
+          <h3><span>Meus <em>pedidos</em></span></h3>
+          {ordersLoading ? (
+            <div className="pdl-profile-empty">Carregando…</div>
+          ) : orders.length === 0 ? (
+            <div className="pdl-profile-empty">
+              Você ainda não fez nenhum pedido. <Link href="/" className="pdl-link">Ver a coleção</Link>
+            </div>
+          ) : (
+            <div>
+              {orders.map(order => {
+                const qty = order.items.reduce((n, i) => n + i.qty, 0);
+                return (
+                  <button
+                    key={order.id}
+                    className="pdl-order-card"
+                    onClick={() => router.push(`/pedido/${order.id}`)}
+                  >
+                    <div className="top">
+                      <span className="num">{order.orderNumber}</span>
+                      <span className={`pdl-order-status ${ORDER_STATUS[order.status]?.kind ?? ''}`}>
+                        {ORDER_STATUS[order.status]?.label ?? order.status}
+                      </span>
+                    </div>
+                    <div className="desc">{order.items.map(i => i.name).join(' + ') || 'Pedido'}</div>
+                    <div className="bot">
+                      <span>
+                        {new Date(order.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        {' · '}
+                        {qty} {qty === 1 ? 'peça' : 'peças'}
+                      </span>
+                      <span className="total">{formatCentavos(order.totalCentavos)}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section className="pdl-profile-section">
+          <h3>
+            <span>Meus <em>endereços</em></span>
+            {!showAddrForm && (
+              <button className="pdl-link" onClick={() => setShowAddrForm(true)}>+ adicionar</button>
+            )}
+          </h3>
+          {addresses.length === 0 && !showAddrForm && (
+            <div className="pdl-profile-empty">Nenhum endereço salvo ainda. Você também pode salvar um durante a compra.</div>
+          )}
           {addresses.map(a => (
-            <div key={a.id} style={{ marginBottom: 12, padding: '12px 14px', background: 'var(--cream-warm)', borderRadius: 6 }}>
-              <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.05 }}>{a.label}</div>
-              <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--ink-soft)', marginTop: 2 }}>
-                {a.street}, {a.number}{a.complement ? ` - ${a.complement}` : ''}<br />
-                {a.neighborhood} · {a.city}/{a.state} · {a.zip}
+            <div key={a.id} className="pdl-address-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                <div className="label">{a.label}</div>
+                <button
+                  className="pdl-cart-item-remove"
+                  onClick={async () => {
+                    await deleteAddressAction(a.id);
+                    setAddresses(prev => prev.filter(x => x.id !== a.id));
+                  }}
+                >
+                  remover
+                </button>
               </div>
-              <button
-                onClick={async () => {
-                  await deleteAddressAction(a.id);
-                  setAddresses(prev => prev.filter(x => x.id !== a.id));
-                }}
-                style={{ marginTop: 6, fontSize: 11, color: 'var(--terra)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>
-                remover
-              </button>
+              <div className="body">
+                {a.street}, {a.number}{a.complement ? ` · ${a.complement}` : ''}<br />
+                {a.neighborhood} · {a.city}/{a.state} · CEP {a.zip}
+              </div>
             </div>
           ))}
 
-          {!showAddrForm && (
-            <button
-              onClick={() => setShowAddrForm(true)}
-              style={{ marginTop: 8, fontSize: 13, fontFamily: 'var(--editorial)', fontStyle: 'italic', color: 'var(--terra)', background: 'none', border: 'none', textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>
-              + adicionar endereço
-            </button>
-          )}
-
           {showAddrForm && (
-            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* Rótulo */}
-              <div>
-                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Rótulo</div>
-                <input
-                  value={newAddr.label}
-                  onChange={e => { setNewAddr(prev => ({ ...prev, label: e.target.value })); setValidationErrors(prev => ({ ...prev, label: false })); }}
-                  placeholder="Casa, Trabalho, etc"
-                  style={{ width: '100%', padding: '8px 10px', border: `2px solid ${validationErrors.label ? 'red' : 'var(--border)'}`, borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
-                />
+            <div className="pdl-address-form">
+              <div className="pdl-form-row two">
+                {addrField('label', 'nome do endereço', { placeholder: 'Casa, trabalho…' })}
+                <div className="pdl-field-group">
+                  <label className="pdl-field-label" htmlFor="addr-zip">
+                    CEP {cepLoading && <span className="hint">buscando…</span>}
+                  </label>
+                  <input
+                    id="addr-zip"
+                    className={`pdl-field${validationErrors.zip || cepError ? ' pdl-field--error' : ''}`}
+                    value={newAddr.zip}
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    placeholder="00000-000"
+                    onChange={e => handleCEPChange(e.target.value)}
+                    onBlur={() => { if (newAddr.zip && !isValidCEP(newAddr.zip)) setCepError('CEP inválido'); }}
+                  />
+                  {cepError && <span className="pdl-field-error">{cepError}</span>}
+                </div>
               </div>
-
-              {/* CEP */}
-              <div>
-                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>CEP</div>
-                <input
-                  value={newAddr.zip}
-                  onChange={e => { handleCEPChange(e.target.value); setValidationErrors(prev => ({ ...prev, zip: false })); }}
-                  onBlur={() => {
-                    if (newAddr.zip && !isValidCEP(newAddr.zip)) {
-                      setCepError('CEP inválido');
-                    }
-                  }}
-                  placeholder="00000-000"
-                  style={{
-                    width: '100%',
-                    padding: '8px 10px',
-                    border: `2px solid ${validationErrors.zip || cepError ? 'red' : 'var(--border)'}`,
-                    borderRadius: 6,
-                    fontSize: 13,
-                    fontFamily: 'var(--sans)',
-                  }}
-                />
-                {cepLoading && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Buscando...</div>}
-                {cepError && <div style={{ fontSize: 12, color: 'red', marginTop: 4 }}>{cepError}</div>}
+              <div className="pdl-form-row street">
+                {addrField('street', 'endereço', { autoComplete: 'address-line1' })}
+                {addrField('number', 'número', { inputMode: 'numeric' })}
               </div>
-
-              {/* Logradouro */}
-              <div>
-                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Logradouro</div>
-                <input
-                  value={newAddr.street}
-                  onChange={e => { setNewAddr(prev => ({ ...prev, street: e.target.value })); setValidationErrors(prev => ({ ...prev, street: false })); }}
-                  style={{ width: '100%', padding: '8px 10px', border: `2px solid ${validationErrors.street ? 'red' : 'var(--border)'}`, borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
-                />
+              <div className="pdl-form-row two">
+                {addrField('complement', 'complemento', { placeholder: 'opcional' })}
+                {addrField('neighborhood', 'bairro')}
               </div>
-
-              {/* Número */}
-              <div>
-                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Número</div>
-                <input
-                  value={newAddr.number}
-                  onChange={e => { setNewAddr(prev => ({ ...prev, number: e.target.value })); setValidationErrors(prev => ({ ...prev, number: false })); }}
-                  placeholder="Ex: 123"
-                  style={{ width: '100%', padding: '8px 10px', border: `2px solid ${validationErrors.number ? 'red' : 'var(--border)'}`, borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
-                />
+              <div className="pdl-form-row cep">
+                {addrField('city', 'cidade', { autoComplete: 'address-level2' })}
+                <div className="pdl-field-group">
+                  <label className="pdl-field-label" htmlFor="addr-state">UF</label>
+                  <select
+                    id="addr-state"
+                    className={`pdl-field${validationErrors.state ? ' pdl-field--error' : ''}`}
+                    value={newAddr.state}
+                    onChange={e => setField('state', e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                  </select>
+                </div>
               </div>
-
-              {/* Complemento */}
-              <div>
-                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Complemento (opcional)</div>
-                <input
-                  value={newAddr.complement}
-                  onChange={e => setNewAddr(prev => ({ ...prev, complement: e.target.value }))}
-                  placeholder="Apto, Sala, etc"
-                  style={{ width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
-                />
-              </div>
-
-              {/* Bairro */}
-              <div>
-                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Bairro</div>
-                <input
-                  value={newAddr.neighborhood}
-                  onChange={e => { setNewAddr(prev => ({ ...prev, neighborhood: e.target.value })); setValidationErrors(prev => ({ ...prev, neighborhood: false })); }}
-                  style={{ width: '100%', padding: '8px 10px', border: `2px solid ${validationErrors.neighborhood ? 'red' : 'var(--border)'}`, borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
-                />
-              </div>
-
-              {/* Cidade */}
-              <div>
-                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Cidade</div>
-                <input
-                  value={newAddr.city}
-                  onChange={e => { setNewAddr(prev => ({ ...prev, city: e.target.value })); setValidationErrors(prev => ({ ...prev, city: false })); }}
-                  style={{ width: '100%', padding: '8px 10px', border: `2px solid ${validationErrors.city ? 'red' : 'var(--border)'}`, borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
-                />
-              </div>
-
-              {/* Estado */}
-              <div>
-                <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.05, color: 'var(--muted)', marginBottom: 3 }}>Estado</div>
-                <select
-                  value={newAddr.state}
-                  onChange={e => { setNewAddr(prev => ({ ...prev, state: e.target.value })); setValidationErrors(prev => ({ ...prev, state: false })); }}
-                  style={{ width: '100%', padding: '8px 10px', border: `2px solid ${validationErrors.state ? 'red' : 'var(--border)'}`, borderRadius: 6, fontSize: 13, fontFamily: 'var(--sans)' }}
-                >
-                  <option value="">Selecione um estado</option>
-                  <option value="AC">Acre</option>
-                  <option value="AL">Alagoas</option>
-                  <option value="AP">Amapá</option>
-                  <option value="AM">Amazonas</option>
-                  <option value="BA">Bahia</option>
-                  <option value="CE">Ceará</option>
-                  <option value="DF">Distrito Federal</option>
-                  <option value="ES">Espírito Santo</option>
-                  <option value="GO">Goiás</option>
-                  <option value="MA">Maranhão</option>
-                  <option value="MT">Mato Grosso</option>
-                  <option value="MS">Mato Grosso do Sul</option>
-                  <option value="MG">Minas Gerais</option>
-                  <option value="PA">Pará</option>
-                  <option value="PB">Paraíba</option>
-                  <option value="PR">Paraná</option>
-                  <option value="PE">Pernambuco</option>
-                  <option value="PI">Piauí</option>
-                  <option value="RJ">Rio de Janeiro</option>
-                  <option value="RN">Rio Grande do Norte</option>
-                  <option value="RS">Rio Grande do Sul</option>
-                  <option value="RO">Rondônia</option>
-                  <option value="RR">Roraima</option>
-                  <option value="SC">Santa Catarina</option>
-                  <option value="SP">São Paulo</option>
-                  <option value="SE">Sergipe</option>
-                  <option value="TO">Tocantins</option>
-                </select>
-              </div>
-
-              {/* Buttons */}
+              {Object.values(validationErrors).some(Boolean) && (
+                <div className="pdl-field-error">Confira os campos destacados.</div>
+              )}
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                <button
-                  onClick={async () => {
-                    const errors: Partial<Record<keyof typeof newAddr, boolean>> = {};
-
-                    // Validar campos obrigatórios
-                    if (!newAddr.label.trim()) errors.label = true;
-                    if (!newAddr.zip.trim() || cepError) errors.zip = true;
-                    if (!newAddr.street.trim()) errors.street = true;
-                    if (!newAddr.number.trim()) errors.number = true;
-                    if (!newAddr.neighborhood.trim()) errors.neighborhood = true;
-                    if (!newAddr.city.trim()) errors.city = true;
-                    if (!newAddr.state.trim()) errors.state = true;
-
-                    if (Object.keys(errors).length > 0) {
-                      setValidationErrors(errors);
-                      return;
-                    }
-
-                    setValidationErrors({});
-                    try {
-                      await saveAddressAction(newAddr);
-                      const updated = await getAddressesAction();
-
-                      setAddresses(updated);
-                      setShowAddrForm(false);
-                      setNewAddr({ label: 'Casa', zip: '', street: '', number: '', complement: '', neighborhood: '', city: '', state: '' });
-                      setCepError(null);
-                    } catch (error) {
-                      console.error('❌ Erro ao salvar:', error);
-                    }
-                  }}
-                  style={{
-                    padding: '10px 16px',
-                    background: 'var(--ink)',
-                    color: '#fff',
-                    borderRadius: 999,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    fontFamily: 'var(--sans)',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}>
-                  Salvar endereço
+                <button className="pdl-btn pdl-btn--primary" onClick={saveNewAddress} disabled={saving}>
+                  {saving ? 'salvando…' : 'salvar endereço'}
                 </button>
-                <button
-                  onClick={() => {
-                    setShowAddrForm(false);
-                    setCepError(null);
-                  }}
-                  style={{ padding: '10px 16px', background: 'none', color: 'var(--muted)', borderRadius: 999, fontSize: 12, border: '1px solid var(--border)', cursor: 'pointer' }}>
-                  Cancelar
+                <button className="pdl-btn pdl-btn--ghost" onClick={() => { setShowAddrForm(false); setCepError(null); setValidationErrors({}); }}>
+                  cancelar
                 </button>
               </div>
             </div>
           )}
-        </div>
+        </section>
 
-        <div className="pdl-profile-section">
-          <h3><span>Meus <em>pedidos</em></span></h3>
-          {ordersLoading ? (
-            <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>
-              Carregando…
-            </div>
-          ) : orders.length === 0 ? (
-            <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>
-              Você ainda não fez nenhum pedido.
-            </div>
-          ) : (
-            <div className="pdl-orders">
-              {orders.map(order => (
-                <button
-                  key={order.id}
-                  className="pdl-order"
-                  onClick={() => router.push(`/pedido/${order.id}`)}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', border: '1px solid var(--border)', borderRadius: 3, padding: '12px 14px', marginBottom: 8, background: 'transparent', cursor: 'pointer' }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                    <span style={{ fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 12 }}>{order.orderNumber}</span>
-                    <span className={`pdl-order-status ${ORDER_STATUS[order.status]?.kind ?? ''}`} style={{ fontSize: 11 }}>
-                      {ORDER_STATUS[order.status]?.label ?? order.status}
-                    </span>
-                  </div>
-                  <div style={{ fontFamily: 'var(--editorial)', fontSize: 13, color: 'var(--ink-soft)', marginTop: 4 }}>
-                    {order.items.map(i => i.name).join(' + ') || 'Pedido'}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 12, color: 'var(--muted)' }}>
-                    <span>
-                      {new Date(order.createdAt).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
-                      {' · '}
-                      {order.items.reduce((n, i) => n + i.qty, 0)} {order.items.reduce((n, i) => n + i.qty, 0) === 1 ? 'peça' : 'peças'}
-                    </span>
-                    <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{formatCentavos(order.totalCentavos)}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="pdl-profile-section">
+        <section className="pdl-profile-section">
           <h3><span>Meus <em>favoritos</em></span></h3>
           {favoritedProducts.length === 0 ? (
-            <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--muted)', padding: '8px 0' }}>
-              Suas peças favoritas aparecerão aqui.
-            </div>
+            <div className="pdl-profile-empty">Toque no coração de uma peça para guardá-la aqui.</div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 12, marginTop: 12 }}>
+            <div className="pdl-fav-grid">
               {favoritedProducts.map(product => (
-                <div key={product.id} className="pdl-prod" style={{ position: 'relative', transform: 'scale(0.75)', transformOrigin: 'top left', width: '133%', marginBottom: '-25%' }} onClick={() => {
-                  const col = product.col.toLowerCase().split(' ')[0];
-                  router.push(`/produto/${product.id}`);
-                }}>
-                  <PdlImg tint={product.tint} imageUrl={product.imageUrl} label={product.label} />
-                  <div className="pdl-prod-info">
-                    <div className="pdl-prod-name">{product.name}</div>
-                    <div className="pdl-prod-meta">
-                      <span className="pdl-prod-col">{product.col}</span>
-                      <span className="pdl-prod-price">{formatCentavos(product.priceCentavos)}</span>
-                    </div>
-                  </div>
-
-                  {/* Heart Button - Top Right */}
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 12,
-                      right: 12,
-                      transform: 'scale(1.33)',
-                      transformOrigin: 'top right',
-                    }}
-                    onClick={e => {
-                      e.stopPropagation();
-                    }}
-                  >
+                <ProductCard key={product.id} p={product}>
+                  <div className="pdl-prod-fav" onClick={e => { e.preventDefault(); e.stopPropagation(); }}>
                     <HeartButton
                       productId={product.id}
                       initialFavorited={true}
                       onToggle={(newState) => {
                         // Desfavoritar tira o card da lista na hora.
-                        if (!newState) {
-                          setFavoritedProducts(prev => prev.filter(p => p.id !== product.id));
-                        }
+                        if (!newState) setFavoritedProducts(prev => prev.filter(p => p.id !== product.id));
                       }}
                     />
                   </div>
-                </div>
+                </ProductCard>
               ))}
             </div>
           )}
-        </div>
+        </section>
 
-        <div className="pdl-profile-section" style={{ paddingTop: 16 }}>
+        <section className="pdl-profile-section">
           <h3><span>Ajuda</span></h3>
-          <div className="pdl-profile-row"><span className="lbl">Falar com a gente</span><span className="meta">WhatsApp</span></div>
-          <div className="pdl-profile-row"><span className="lbl">Trocas e devoluções</span><span className="meta"><IconArrowRight size={11} /></span></div>
-          <div className="pdl-profile-row"><span className="lbl">Guia de tamanhos</span><span className="meta"><IconArrowRight size={11} /></span></div>
-        </div>
+          <a className="pdl-profile-row" href="mailto:atendimento@pingodeluz.com"><span>Falar com a gente</span><span className="meta">e-mail <IconArrowRight size={11} /></span></a>
+          <Link className="pdl-profile-row" href="/trocas"><span>Envio, trocas e devoluções</span><span className="meta"><IconArrowRight size={11} /></span></Link>
+          <Link className="pdl-profile-row" href="/privacidade"><span>Privacidade</span><span className="meta"><IconArrowRight size={11} /></span></Link>
+        </section>
 
         {showEditName && (
-          <div style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}>
-            <div style={{
-              background: '#fff',
-              borderRadius: 12,
-              padding: 24,
-              maxWidth: 320,
-              width: '90%',
-            }}>
-              <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 600 }}>Alterar nome</h3>
+          <div className="pdl-modal-backdrop" onClick={() => setShowEditName(false)}>
+            <div className="pdl-modal" role="dialog" aria-modal="true" aria-label="Alterar nome" onClick={e => e.stopPropagation()}>
+              <h3>Como quer ser <em style={{ fontStyle: 'italic', fontWeight: 400 }}>chamada?</em></h3>
               <input
                 type="text"
+                className="pdl-field"
                 value={editingName}
                 onChange={(e) => setEditingName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && saveName()}
                 placeholder="Seu nome"
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid var(--border)',
-                  borderRadius: 6,
-                  fontSize: 14,
-                  marginBottom: 16,
-                  fontFamily: 'var(--sans)',
-                }}
+                autoFocus
               />
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button
-                  onClick={async () => {
-                    if (editingName.trim()) {
-                      const { error } = await supabase.auth.updateUser({
-                        data: { full_name: editingName },
-                      });
-                      if (!error) {
-                        setUser(u => u ? { ...u, user_metadata: { ...u.user_metadata, full_name: editingName } } : null);
-                        setShowEditName(false);
-                      }
-                    }
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    background: 'var(--ink)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 6,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Salvar
-                </button>
-                <button
-                  onClick={() => setShowEditName(false)}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    background: 'var(--cream-warm)',
-                    color: 'var(--ink)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    fontSize: 12,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Cancelar
-                </button>
+              <div className="pdl-modal-actions">
+                <button className="pdl-btn pdl-btn--primary" style={{ flex: 1 }} onClick={saveName}>salvar</button>
+                <button className="pdl-btn pdl-btn--ghost" style={{ flex: 1 }} onClick={() => setShowEditName(false)}>cancelar</button>
               </div>
             </div>
           </div>
         )}
 
-        <div style={{ marginTop: 24, marginBottom: 24, width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="pdl-logout" onClick={handleLogout} style={{ display: 'block !important', width: 'fit-content !important', margin: '0 auto 12px !important' }}>sair da conta</div>
-          <div style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 12, color: 'var(--muted)' }}>
-            Conta vinculada ao Google
+        <div style={{ marginTop: 24, textAlign: 'center' }}>
+          <button className="pdl-logout" onClick={handleLogout} style={{ margin: 0 }}>sair da conta</button>
+          <div className="pdl-profile-empty" style={{ marginTop: 8 }}>
+            {provider === 'google' ? 'Conta vinculada ao Google' : 'Entrada por código no e-mail'}
           </div>
         </div>
       </div>
-
-      <PdlFooter />
-    </div>
+    </PageWrapper>
   );
 }
 

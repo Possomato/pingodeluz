@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-import { IconGoogle } from '@/components/Icons';
+import { IconGoogle, IconLock } from "@/components/Icons";
 import {
   normalizeEmail,
   isValidEmail,
@@ -74,6 +73,7 @@ export default function LoginPanel({ redirectTo = '/' }: { redirectTo?: string }
   // aberto, mesma trava do /auth/callback.
   const safeRedirect =
     redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/';
+  const fromCheckout = safeRedirect.startsWith("/checkout");
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -201,24 +201,18 @@ export default function LoginPanel({ redirectTo = '/' }: { redirectTo?: string }
 
   return (
     <div className="pdl-login">
-      <div style={{ maxWidth: '200px', margin: '0 auto 6px', width: '100%' }}>
-        <Image
-          src="/logo-transparente.png"
-          alt="Pingo de Luz"
-          width={200}
-          height={100}
-          priority
-          style={{ width: '100%', height: 'auto', display: 'block' }}
-        />
-      </div>
-
       {step === 'email' ? (
         <>
+          {fromCheckout && (
+            <div className="pdl-login-context"><IconLock size={11} /> falta pouco para finalizar</div>
+          )}
           <h2 className="pdl-login-welcome">
-            Bem-vinda <em>de volta.</em>
+            {fromCheckout ? <>Só um <em>instante.</em></> : <>Bem-vinda <em>de volta.</em></>}
           </h2>
           <div className="pdl-login-sub">
-            Entre para ver seus pedidos, salvar endereços e acompanhar as peças favoritas.
+            {fromCheckout
+              ? <>Entre com Google ou e-mail para acompanhar seu pedido. Sem senha, sem cadastro longo — sua sacola continua guardada.</>
+              : <>Entre para ver seus pedidos, salvar endereços e acompanhar as peças favoritas.</>}
           </div>
 
           <button
@@ -355,7 +349,7 @@ export default function LoginPanel({ redirectTo = '/' }: { redirectTo?: string }
       </p>
 
       <div className="pdl-login-foot">
-        Ao continuar, você concorda com os <a href="/trocas">Termos</a> e nossa{' '}
+        Ao continuar, você concorda com os <a href="/termos">Termos</a> e nossa{' '}
         <a href="/privacidade">Política de privacidade</a>. Não criamos senha — você entra com o
         Google ou com um código enviado para seu e-mail.
       </div>

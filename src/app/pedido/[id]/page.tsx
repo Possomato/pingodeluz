@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getMyOrderAction } from '@/app/actions/orders';
 import { formatCentavos } from '@/lib/money';
 import PdlImg from '@/components/PdlImg';
+import PageWrapper from '@/components/PageWrapper';
 
 export const metadata = { title: 'Seu pedido', robots: { index: false } };
 
@@ -40,47 +41,31 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
   const isTerminated = ['cancelado', 'recusado', 'reembolsado'].includes(order.status);
 
   return (
-    <div className="pdl-app">
-      <div className="pdl-cart" style={{ paddingTop: 24 }}>
-        <Link
-          href="/perfil"
-          style={{ fontFamily: 'var(--editorial)', fontStyle: 'italic', fontSize: 13, color: 'var(--terra)' }}
-        >
-          ← meus pedidos
-        </Link>
+    <PageWrapper>
+      <div className="pdl-page">
+        <Link href="/perfil" className="pdl-link">← meus pedidos</Link>
 
-        <div className="pdl-cart-title" style={{ paddingTop: 12 }}>
-          Pedido <em>{order.orderNumber}</em>
-        </div>
-        <div className="pdl-cart-sub">
-          {new Date(order.createdAt).toLocaleDateString('pt-BR', {
-            day: '2-digit', month: 'long', year: 'numeric',
-          })}
-          {' · '}
-          {STATUS_LABEL[order.status] ?? order.status}
+        <div className="pdl-page-head" style={{ marginTop: 14 }}>
+          <h1 className="pdl-h1">Pedido <em>{order.orderNumber}</em></h1>
+          <div className="pdl-cart-sub">
+            {new Date(order.createdAt).toLocaleDateString('pt-BR', {
+              day: '2-digit', month: 'long', year: 'numeric',
+            })}
+            {' · '}
+            {STATUS_LABEL[order.status] ?? order.status}
+          </div>
         </div>
 
         {/* Linha do tempo */}
         {!isTerminated && (
-          <ol style={{ listStyle: 'none', padding: 0, margin: '24px 0' }}>
+          <ol className="pdl-timeline">
             {TIMELINE.map((step, i) => {
-              const done = i <= currentRank;
+              const done = i < currentRank;
+              const current = i === currentRank;
               return (
-                <li
-                  key={step.status}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', opacity: done ? 1 : 0.4 }}
-                >
-                  <span
-                    aria-hidden
-                    style={{
-                      width: 10, height: 10, borderRadius: '50%',
-                      background: done ? 'var(--terra)' : 'var(--border)',
-                      flexShrink: 0,
-                    }}
-                  />
-                  <span style={{ fontFamily: 'var(--editorial)', fontSize: 14 }}>
-                    {step.label}
-                  </span>
+                <li key={step.status} className={done ? 'done' : current ? 'current' : ''}>
+                  <i aria-hidden />
+                  <span>{step.label}</span>
                 </li>
               );
             })}
@@ -88,9 +73,9 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
         )}
 
         {order.trackingCode && (
-          <div style={{ padding: '12px 14px', border: '1px dashed var(--border)', borderRadius: 3, marginBottom: 16 }}>
+          <div className="pdl-note" style={{ marginBottom: 16, fontStyle: 'normal' }}>
             <div className="pdl-eyebrow">código de rastreio</div>
-            <div style={{ fontFamily: 'var(--sans)', fontWeight: 600, marginTop: 4 }}>{order.trackingCode}</div>
+            <div style={{ fontFamily: 'var(--sans)', fontWeight: 600, marginTop: 4, fontSize: 15 }}>{order.trackingCode}</div>
           </div>
         )}
 
@@ -101,36 +86,36 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
               <PdlImg tint={it.tint} imageUrl={it.imageUrl} />
               <div>
                 <div className="n">{it.name}</div>
-                <div className="m">tam {it.size} · qtd {it.qty}</div>
+                <div className="m">tam. {it.size} · {it.qty} un.</div>
               </div>
               <div className="p">{formatCentavos(it.lineTotalCentavos)}</div>
             </div>
           ))}
 
           <div className="pdl-review-totals">
-            <div className="pdl-cart-summary-row" style={{ padding: '4px 0' }}>
+            <div className="pdl-cart-summary-row">
               <span>Subtotal</span><span>{formatCentavos(order.subtotalCentavos)}</span>
             </div>
-            <div className="pdl-cart-summary-row" style={{ padding: '4px 0' }}>
+            <div className="pdl-cart-summary-row">
               <span>Frete</span>
               <span>{order.freightCentavos === 0 ? 'grátis' : formatCentavos(order.freightCentavos)}</span>
             </div>
             {order.discountCentavos > 0 && (
-              <div className="pdl-cart-summary-row" style={{ padding: '4px 0', color: 'var(--terra)' }}>
+              <div className="pdl-cart-summary-row" style={{ color: 'var(--terra-deep)' }}>
                 <span>Desconto{order.couponCode ? ` ${order.couponCode}` : ''}</span>
                 <span>− {formatCentavos(order.discountCentavos)}</span>
               </div>
             )}
-            <div className="pdl-cart-summary-row total" style={{ marginTop: 8 }}>
+            <div className="pdl-cart-summary-row total">
               <span>Total</span><span>{formatCentavos(order.totalCentavos)}</span>
             </div>
           </div>
         </div>
 
         {/* Entrega */}
-        <div className="pdl-profile-section" style={{ marginTop: 24 }}>
+        <div className="pdl-profile-section" style={{ marginTop: 24, borderBottom: 'none', padding: '24px 0 0' }}>
           <h3><span>Entrega</span></h3>
-          <div style={{ fontFamily: 'var(--editorial)', fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.5 }}>
+          <div className="pdl-prose" style={{ fontSize: 14.5, lineHeight: 1.5 }}>
             {order.address.name}<br />
             {order.address.street}, {order.address.number}
             {order.address.complement ? ` · ${order.address.complement}` : ''}<br />
@@ -139,6 +124,6 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
       </div>
-    </div>
+    </PageWrapper>
   );
 }
