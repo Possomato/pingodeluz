@@ -30,6 +30,8 @@ export default function HomeClient({ hpConfig, products, featured, paymentConfig
   const featuredSizes = featured ? (featured.sizes ?? []).filter(s => isSizeAvailable(featured, s)) : [];
   const featuredInstallments = featured ? calcInstallments(featured.priceCentavos, paymentConfig) : null;
   const featuredParts = featured?.nameParts ?? [featured?.name ?? '', ''];
+  // Só a primeira frase da descrição: na abertura, menos texto diz mais.
+  const featuredLead = featured?.desc?.split(/(?<=[.!?])\s+/)[0]?.trim();
 
   return (
     <PageWrapper>
@@ -42,19 +44,19 @@ export default function HomeClient({ hpConfig, products, featured, paymentConfig
             <PdlImg tint={featured.tint} imageUrl={featured.imageUrl} label={featured.label} />
           </div>
           <div className="pdl-hero-body">
-            <div className="pdl-hero-eyebrow">{featured.col}</div>
+            <div className="pdl-hero-eyebrow">olá, mãe</div>
             <h1 className="pdl-hero-title">{featuredParts[0]} <em>{featuredParts[1]}</em></h1>
-            {featured.desc && <p className="pdl-hero-desc">{featured.desc}</p>}
+            {featuredLead && <p className="pdl-hero-lead">{featuredLead}</p>}
+            <div className="pdl-hero-rule" aria-hidden><Sparkle size={10} color="var(--terra)" /></div>
             <div className="pdl-hero-price">
               <span className="now">{formatCentavos(featured.priceCentavos)}</span>
               {featuredInstallments && <span className="inst">ou {featuredInstallments}</span>}
             </div>
-            {featuredSizes.length > 0 && (
-              <div className="pdl-hero-sizes" aria-label="Tamanhos disponíveis">
-                {featuredSizes.map(s => <span key={s}>{s}</span>)}
-              </div>
-            )}
-            <span className="pdl-btn pdl-btn--primary pdl-btn--lg pdl-hero-cta">
+            <div className="pdl-hero-meta">
+              <span>{featured.col}</span>
+              {featuredSizes.length > 0 && <span>tamanhos {featuredSizes.join(' · ')}</span>}
+            </div>
+            <span className="pdl-hero-cta">
               {isSoldOut(featured) ? 'ver a peça' : 'quero este'} <IconArrowRight size={14} />
             </span>
           </div>
