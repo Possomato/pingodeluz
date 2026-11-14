@@ -1,10 +1,18 @@
 'use server';
 
 import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server';
-import { getPaymentGateway } from '@/lib/payments';
+import {
+  getPaymentGateway,
+  PaymentRequestError,
+  type PaymentInstructions,
+  type PaymentMethodInput,
+  type PaymentRejection,
+} from '@/lib/payments';
+import { processPaymentNotification } from '@/lib/payments/process-notification';
 import { computeTotals, type ShippingConfig } from '@/lib/pricing';
 import { normalizeCouponCode, validateCoupon, type Coupon } from '@/lib/coupon';
-import { rowToProduct } from '@/lib/data';
+import { fetchPaymentConfig, rowToProduct } from '@/lib/data';
+import { isValidCPF, onlyDigits } from '@/lib/cpf';
 
 /**
  * Criação de pedido.
@@ -192,32 +200,120 @@ export async function quoteCheckoutAction(
   };
 }
 
-// ─── Criação do pedido ───────────────────────────────────────
+// ─── Criação do pedido e cobrança ────────────────────────────
+
+/** O que a tela de pagamento envia. Nunca contém número de cartão. */
+export interface CheckoutPayment {
+  /** CPF de quem paga. */
+  cpf: string;
+  method: 'pix' | 'boleto' | 'card';
+  /** Só no cartão: token gerado no navegador pelos campos seguros. */
+  card?: {
+    token: string;
+    brand: string;
+    cardType: 'credit_card' | 'debit_card';
+    installments: number;
+  };
+  deviceId?: string;
+}
+
+/**
+ * Resultado como valor, não como exceção: em produção o Next esconde a
+ * mensagem de erros lançados em Server Actions, e a tela precisa saber
+ * exatamente o que dizer à pessoa.
+ */
+export type PlaceOrderResult =
+  | { status: 'approved' | 'pending'; orderId: string; orderNumber: string }
+  | { status: 'rejected'; reason: PaymentRejection }
+  | { status: 'error'; code: 'stock' | 'coupon' | 'cart' | 'cpf' | 'payment'; message: string };
+
+/** Pedido que não vai ser pago: sai de "pendente" e devolve o cupom. */
+async function discardOrder(
+  service: ReturnType<typeof createServiceClient>,
+  orderId: string,
+  couponCode: string | null
+) {
+  await service
+    .from('orders')
+    .update({ status: 'recusado', updated_at: new Date().toISOString() })
+    .eq('id', orderId)
+    .eq('status', 'pendente');
+  await releaseCoupon(service, couponCode);
+}
+
+async function releaseCoupon(
+  service: ReturnType<typeof createServiceClient>,
+  couponCode: string | null
+) {
+  if (!couponCode) return;
+  const { data } = await service.from('coupons').select('used_count').eq('code', couponCode).maybeSingle();
+  const used = (data?.used_count as number | undefined) ?? 0;
+  if (used <= 0) return;
+  // O filtro em used_count evita devolver duas vezes numa corrida.
+  await service.from('coupons').update({ used_count: used - 1 }).eq('code', couponCode).eq('used_count', used);
+}
 
 export async function createOrderAction(
   lines: CartLine[],
   address: CheckoutAddress,
+  payment: CheckoutPayment,
   couponCode?: string
-): Promise<{ redirectUrl: string; orderId: string; orderNumber: string }> {
+): Promise<PlaceOrderResult> {
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('NAO_AUTENTICADO');
+
+  if (!isValidCPF(payment.cpf)) {
+    return { status: 'error', code: 'cpf', message: 'Confira o CPF: os números não parecem corretos.' };
+  }
+
+  let method: PaymentMethodInput;
+  if (payment.method === 'card') {
+    if (!payment.card?.token || !payment.card.brand) {
+      return { status: 'error', code: 'payment', message: 'Não conseguimos ler os dados do cartão. Confira e tente de novo.' };
+    }
+    const { maxParcelas } = await fetchPaymentConfig();
+    const installments = Math.min(Math.max(1, Math.floor(payment.card.installments || 1)), Math.max(1, maxParcelas));
+    method = {
+      kind: 'card',
+      token: payment.card.token,
+      brand: payment.card.brand,
+      cardType: payment.card.cardType === 'debit_card' ? 'debit_card' : 'credit_card',
+      installments,
+    };
+  } else {
+    method = { kind: payment.method === 'boleto' ? 'boleto' : 'pix' };
+  }
 
   const service = createServiceClient();
 
   // Estoque conferido aqui só para não deixar o cliente pagar por algo
   // esgotado; a baixa definitiva acontece na aprovação (ADR-3).
-  const [{ items, subtotalCentavos }, shipping] = await Promise.all([
-    resolveCart(service, lines, { checkStock: true }),
-    loadShippingConfig(service),
-  ]);
+  let cart: Awaited<ReturnType<typeof resolveCart>>;
+  let shipping: ShippingConfig;
+  try {
+    [cart, shipping] = await Promise.all([
+      resolveCart(service, lines, { checkStock: true }),
+      loadShippingConfig(service),
+    ]);
+  } catch (err) {
+    const raw = err instanceof Error ? err.message : '';
+    if (raw.startsWith('ESTOQUE_INSUFICIENTE') || raw.startsWith('PRODUTO_INDISPONIVEL')) {
+      return { status: 'error', code: 'stock', message: 'Uma das peças acabou de esgotar. Volte à sacola para revisar seu pedido.' };
+    }
+    if (raw.startsWith('CARRINHO_VAZIO')) {
+      return { status: 'error', code: 'cart', message: 'Sua sacola está vazia.' };
+    }
+    throw err;
+  }
+  const { items, subtotalCentavos } = cart;
 
   const { coupon, error: couponError } = await resolveCoupon(
     service,
     couponCode,
     subtotalCentavos
   );
-  if (couponError) throw new Error(`CUPOM_INVALIDO:${couponError}`);
+  if (couponError) return { status: 'error', code: 'coupon', message: couponError };
 
   const totals = computeTotals(subtotalCentavos, shipping, coupon);
 
@@ -257,41 +353,102 @@ export async function createOrderAction(
 
   if (error || !order) throw new Error(error?.message ?? 'Falha ao criar o pedido');
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!;
   const gateway = getPaymentGateway();
+  const usedCoupon = appliedCoupon?.code ?? null;
 
-  const checkout = await gateway.createCheckout({
-    orderId: order.id,
-    orderNumber: order.order_number,
-    items: items.map((i) => ({
-      id: i.id,
-      title: `${i.name} (tam. ${i.size})`,
-      quantity: i.qty,
-      unitPriceCentavos: i.unitPriceCentavos,
-    })),
-    totalCentavos: appliedTotals.totalCentavos,
-    freightCentavos: appliedTotals.freightCentavos,
-    discountCentavos: appliedTotals.discountCentavos,
-    payerEmail: address.email || user.email || '',
-    payerName: address.name,
-    successUrl: `${siteUrl}/confirmacao?order_id=${order.id}`,
-    failureUrl: `${siteUrl}/checkout?error=pagamento`,
-    pendingUrl: `${siteUrl}/confirmacao?order_id=${order.id}&pending=true`,
-    notificationUrl: `${siteUrl}/api/webhooks/${gateway.provider}`,
-  });
+  let result: Awaited<ReturnType<typeof gateway.createPayment>>;
+  try {
+    result = await gateway.createPayment({
+      orderId: order.id,
+      orderNumber: order.order_number,
+      items: items.map((i) => ({
+        id: i.id,
+        title: `${i.name} (tam. ${i.size})`,
+        quantity: i.qty,
+        unitPriceCentavos: i.unitPriceCentavos,
+      })),
+      totalCentavos: appliedTotals.totalCentavos,
+      freightCentavos: appliedTotals.freightCentavos,
+      discountCentavos: appliedTotals.discountCentavos,
+      payer: {
+        email: address.email || user.email || '',
+        name: address.name,
+        cpf: onlyDigits(payment.cpf),
+        address: {
+          zip: address.zip,
+          street: address.street,
+          number: address.number,
+          complement: address.complement,
+          neighborhood: address.neighborhood,
+          city: address.city,
+          state: address.state,
+        },
+      },
+      method,
+      deviceId: payment.deviceId,
+    });
+  } catch (err) {
+    // A cobrança não existe: o pedido não pode ficar "pendente" à espera
+    // de um pagamento que nunca virá.
+    await discardOrder(service, order.id, usedCoupon);
+    if (err instanceof PaymentRequestError) return { status: 'rejected', reason: err.rejection };
+    console.error('[checkout] falha ao criar cobrança:', err);
+    return { status: 'error', code: 'payment', message: 'Não conseguimos falar com o sistema de pagamento. Nada foi cobrado — tente de novo em instantes.' };
+  }
 
-  // Só agora sabemos quem processa a cobrança.
+  const { notification } = result;
+
+  // Registra quem processa a cobrança antes dos efeitos: para Pix e
+  // boleto o pedido segue pendente e é por aqui que a tela de
+  // confirmação reencontra o código de pagamento.
   await service
     .from('orders')
     .update({
       payment_provider: gateway.provider,
-      payment_external_id: checkout.externalId ?? null,
+      payment_external_id: notification.externalPaymentId,
+      payment_method: notification.method ?? null,
     })
     .eq('id', order.id);
 
+  // Mesmo caminho do webhook: cartão aprovado baixa estoque agora, e o
+  // aviso que chegar depois é reconhecido como repetido.
+  await processPaymentNotification(gateway.provider, notification);
+
+  if (notification.status === 'rejected' || notification.status === 'cancelled') {
+    await releaseCoupon(service, usedCoupon);
+    return { status: 'rejected', reason: result.rejection ?? 'other' };
+  }
+
   return {
-    redirectUrl: checkout.redirectUrl,
+    status: notification.status === 'approved' ? 'approved' : 'pending',
     orderId: order.id,
     orderNumber: order.order_number,
   };
+}
+
+/**
+ * Pix ou boleto de um pedido ainda em aberto, para a tela de confirmação
+ * (e para quem fecha a aba e volta depois pelo "meus pedidos").
+ */
+export async function getPaymentInstructionsAction(orderId: string): Promise<PaymentInstructions | null> {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Leitura com a sessão do cliente: a policy "own orders read" garante
+  // que ninguém busque o Pix do pedido de outra pessoa.
+  const { data: order } = await supabase
+    .from('orders')
+    .select('status, payment_external_id')
+    .eq('id', orderId)
+    .maybeSingle();
+
+  if (!order || order.status !== 'pendente' || !order.payment_external_id) return null;
+
+  try {
+    return await getPaymentGateway().getInstructions(order.payment_external_id as string);
+  } catch (err) {
+    console.error('[checkout] falha ao buscar instruções de pagamento:', err);
+    return null;
+  }
 }

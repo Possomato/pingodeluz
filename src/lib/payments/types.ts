@@ -15,7 +15,41 @@ export interface PaymentItem {
   unitPriceCentavos: number;
 }
 
-export interface CreateCheckoutInput {
+/** Quem paga. CPF é exigido pelo Pix, pelo boleto e pelo cartão no Brasil. */
+export interface Payer {
+  email: string;
+  name: string;
+  /** Só dígitos. */
+  cpf: string;
+  /** Obrigatório para boleto; ajuda a análise antifraude nos demais. */
+  address?: {
+    zip: string;
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+  };
+}
+
+/**
+ * Meio escolhido na loja. No cartão, o número nunca chega aqui: o
+ * navegador o troca por um `token` direto com o provedor.
+ */
+export type PaymentMethodInput =
+  | { kind: 'pix' }
+  | { kind: 'boleto' }
+  | {
+      kind: 'card';
+      token: string;
+      /** Bandeira no vocabulário do provedor (visa, master, elo…). */
+      brand: string;
+      cardType: 'credit_card' | 'debit_card';
+      installments: number;
+    };
+
+export interface CreatePaymentInput {
   orderId: string;
   /** Número amigável (PDL-10001), exibido ao cliente na fatura. */
   orderNumber: string;
@@ -24,20 +58,62 @@ export interface CreateCheckoutInput {
   totalCentavos: number;
   freightCentavos: number;
   discountCentavos: number;
-  payerEmail: string;
-  payerName?: string;
-  successUrl: string;
-  failureUrl: string;
-  pendingUrl: string;
-  notificationUrl: string;
+  payer: Payer;
+  method: PaymentMethodInput;
+  /** Identificador do dispositivo gerado pelo SDK do provedor (antifraude). */
+  deviceId?: string;
 }
 
-export interface CreateCheckoutResult {
-  /** Para onde redirecionar o navegador do cliente. */
-  redirectUrl: string;
-  /** Identificador da cobrança no provedor, quando já existe. */
-  externalId?: string;
+/** O que a pessoa precisa para concluir um pagamento que não é imediato. */
+export type PaymentInstructions =
+  | {
+      kind: 'pix';
+      /** Código "copia e cola". */
+      code: string;
+      /** PNG do QR code em base64, sem o prefixo data:. */
+      qrCodeBase64?: string;
+      expiresAt?: string;
+    }
+  | {
+      kind: 'boleto';
+      /** Página do boleto para imprimir ou salvar. */
+      url: string;
+      digitableLine?: string;
+      expiresAt?: string;
+    };
+
+export interface CreatePaymentResult {
+  /**
+   * Estado da cobrança no formato do webhook, para o chamador aplicar os
+   * efeitos na hora (cartão aprovado baixa estoque sem esperar o aviso).
+   */
+  notification: PaymentNotification;
+  /** Motivo da recusa no vocabulário do domínio, quando houver. */
+  rejection?: PaymentRejection;
+  instructions?: PaymentInstructions;
 }
+
+/**
+ * A cobrança nem chegou a ser criada no provedor (dados recusados antes
+ * de processar). Carrega o motivo já no vocabulário do domínio.
+ */
+export class PaymentRequestError extends Error {
+  constructor(
+    readonly rejection: PaymentRejection,
+    detail: string
+  ) {
+    super(`PAGAMENTO_NAO_CRIADO:${detail}`);
+    this.name = 'PaymentRequestError';
+  }
+}
+
+export type PaymentRejection =
+  | 'insufficient_funds'
+  | 'card_data'
+  | 'issuer'
+  | 'risk'
+  | 'installments'
+  | 'other';
 
 /**
  * Status normalizado. Cada adaptador traduz o vocabulário do seu
@@ -73,8 +149,11 @@ export interface PaymentGateway {
   /** Identificador gravado em `orders.payment_provider`. */
   readonly provider: string;
 
-  /** Cria a cobrança e devolve para onde mandar o cliente. */
-  createCheckout(input: CreateCheckoutInput): Promise<CreateCheckoutResult>;
+  /** Cria e processa a cobrança dentro da loja (checkout transparente). */
+  createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
+
+  /** Busca de novo o Pix/boleto de uma cobrança ainda em aberto. */
+  getInstructions(externalPaymentId: string): Promise<PaymentInstructions | null>;
 
   /** Confere a autenticidade da requisição de webhook. */
   verifyWebhook(request: Request, rawBody: string): WebhookVerification;

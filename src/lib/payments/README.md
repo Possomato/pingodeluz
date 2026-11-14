@@ -28,17 +28,24 @@ O resultado esperado é uma única linha: `src/lib/payments/mercadopago.ts`.
 
 ## Como funciona um pagamento
 
-1. `createOrderAction` (`src/app/actions/checkout.ts`) calcula os totais **no
+O checkout é **transparente**: a pessoa paga sem sair da loja (ADR-4).
+
+1. Na tela de pagamento ela escolhe Pix, cartão ou boleto e informa o CPF.
+   No cartão, os campos seguros do provedor (iframes em `CardFields.tsx`)
+   trocam os dados por um token no navegador — a loja nunca vê o número.
+2. `createOrderAction` (`src/app/actions/checkout.ts`) calcula os totais **no
    servidor**, grava o pedido como `pendente` e chama
-   `gateway.createCheckout(...)`.
-2. O cliente é redirecionado para o `redirectUrl` do provedor e paga lá — nenhum
-   dado de cartão passa pela nossa aplicação (ADR-4).
-3. O provedor chama nosso webhook. A rota
-   (`src/app/api/webhooks/mercadopago/route.ts`) é um wrapper fino: verifica a
-   assinatura, traduz o corpo com `parseNotification` e entrega o resultado
-   normalizado a `processPaymentNotification`.
-4. `processPaymentNotification` aplica os efeitos: grava o evento (idempotência),
-   avança o status do pedido e baixa ou repõe estoque.
+   `gateway.createPayment(...)`.
+3. O resultado já vem no formato do webhook (`PaymentNotification`) e passa por
+   `processPaymentNotification`: cartão aprovado vira `pago` e baixa estoque na
+   hora; recusado vira `recusado` e devolve o cupom; Pix e boleto seguem
+   `pendente` com as instruções de pagamento.
+4. A confirmação e a página do pedido buscam o Pix/boleto com
+   `gateway.getInstructions(...)` enquanto o pedido estiver pendente.
+5. Quando o provedor confirma (Pix pago, boleto compensado, estorno), ele chama
+   o webhook. A rota (`src/app/api/webhooks/mercadopago/route.ts`) é um wrapper
+   fino: verifica a assinatura, traduz com `parseNotification` e entrega a
+   `processPaymentNotification`.
 
 ## Trocar de provedor
 
@@ -47,6 +54,8 @@ O resultado esperado é uma única linha: `src/lib/payments/mercadopago.ts`.
    - status do provedor → `NormalizedPaymentStatus`
    - meio de pagamento → `'pix' | 'credit_card' | 'boleto' | 'debit_card'`
    - verificação de assinatura do webhook
+   - motivo de recusa → `PaymentRejection`
+   - Pix/boleto em aberto → `PaymentInstructions`
 2. Registrar o `case` novo em `index.ts`.
 3. Criar a rota de webhook do provedor (copiar a existente; ela tem ~15 linhas e
    nenhuma lógica própria).

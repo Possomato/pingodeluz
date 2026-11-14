@@ -1,7 +1,7 @@
 import type { PaymentGateway } from './types';
 import { MercadoPagoGateway } from './mercadopago';
 
-export type * from './types';
+export * from './types';
 
 let cached: PaymentGateway | null = null;
 

@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import PdlHeader from '@/components/PdlHeader';
 import PdlImg from '@/components/PdlImg';
+import CardFields, { type CardFieldsHandle } from '@/components/CardFields';
 import { IconArrowRight, IconLock, IconChevronDown, Sparkle } from '@/components/Icons';
 import { useCart } from '@/context/CartContext';
 import { formatCentavos } from '@/lib/money';
 import { formatCEP, isValidCEP, fetchCEPData, extractAddressFromCEP } from '@/lib/cep';
-import { createOrderAction, quoteCheckoutAction, type QuoteResult } from '@/app/actions/checkout';
+import { formatCPF, isValidCPF, onlyDigits } from '@/lib/cpf';
+import { createOrderAction, quoteCheckoutAction, type QuoteResult, type CheckoutPayment } from '@/app/actions/checkout';
+import type { PaymentRejection } from '@/lib/payments';
 import { saveAddressAction, type Address } from '@/app/actions/addresses';
 
 interface Profile {
@@ -28,14 +31,38 @@ const EMPTY_ADDRESS = {
 };
 
 type Step = 1 | 2;
+type Method = 'pix' | 'card' | 'boleto';
+
+// Chave pública: identifica a loja no navegador e só serve para gerar o
+// token do cartão. Pode (e precisa) ir no bundle do cliente.
+const MP_PUBLIC_KEY = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? '';
+
+const METHODS: { id: Method; name: string; desc: string; tag?: string }[] = [
+  { id: 'pix', name: 'Pix', desc: 'Você paga pelo aplicativo do seu banco.', tag: 'aprovação na hora' },
+  { id: 'card', name: 'Cartão de crédito', desc: 'Pague à vista ou parcele, direto aqui na loja.' },
+  { id: 'boleto', name: 'Boleto', desc: 'Pague no banco, na lotérica ou pelo aplicativo. Aprovação em até 2 dias úteis.' },
+];
+
+// Toda recusa termina dizendo o que a pessoa mais quer saber: nada foi cobrado.
+const REJECTION_MESSAGE: Record<PaymentRejection, string> = {
+  insufficient_funds: 'O cartão não tem limite disponível para esta compra. Tente outro cartão ou pague com Pix.',
+  card_data: 'Algum dado do cartão não confere. Confira o número, a validade e o código de segurança.',
+  issuer: 'O banco do cartão não autorizou a compra. Você pode ligar para o banco, tentar outro cartão ou pagar com Pix.',
+  risk: 'O pagamento não foi autorizado por segurança. Tente outro cartão ou pague com Pix.',
+  installments: 'Esse parcelamento não está disponível para este cartão. Escolha menos parcelas ou pague à vista.',
+  other: 'O pagamento não foi aprovado. Tente outro cartão ou pague com Pix.',
+};
 
 export default function CheckoutClient({
   savedAddresses,
   profile,
+  maxInstallments,
   paymentFailed = false,
 }: {
   savedAddresses: Address[];
   profile: Profile | null;
+  /** Máximo de parcelas definido no admin. */
+  maxInstallments: number;
   /** Volta do provedor com pagamento recusado/abandonado (?error=pagamento). */
   paymentFailed?: boolean;
 }) {
@@ -58,6 +85,13 @@ export default function CheckoutClient({
   const [saveAddress, setSaveAddress] = useState(true);
   const [cepLoading, setCepLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Pagamento. Pix vem escolhido: é o caminho mais curto e sem digitação.
+  const [method, setMethod] = useState<Method>('pix');
+  const [cpf, setCpf] = useState('');
+  const [cpfError, setCpfError] = useState<string | null>(null);
+  const cardRef = useRef<CardFieldsHandle>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
 
   const [couponInput, setCouponInput] = useState('');
   const [quote, setQuote] = useState<QuoteResult | null>(null);
@@ -159,11 +193,36 @@ export default function CheckoutClient({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const fail = (message: string) => {
+    setError(message);
+    setPlacing(false);
+    // A mensagem aparece acima do botão; garante que ela esteja à vista.
+    requestAnimationFrame(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  };
+
   const placeOrder = async () => {
-    setPlacing(true);
     setError(null);
 
+    if (!isValidCPF(cpf)) {
+      setCpfError('Confira o CPF: são 11 números.');
+      document.getElementById('ck-cpf')?.focus();
+      return;
+    }
+
+    setPlacing(true);
+
     try {
+      const payment: CheckoutPayment = { cpf: onlyDigits(cpf), method };
+
+      if (method === 'card') {
+        const card = await cardRef.current?.submit(onlyDigits(cpf));
+        if (!card) return fail('O formulário do cartão ainda está carregando. Aguarde um instante e tente de novo.');
+        if (!card.ok) return fail(card.message);
+        const { deviceId, ...rest } = card.card;
+        payment.card = rest;
+        payment.deviceId = deviceId;
+      }
+
       let address;
 
       if (useNewAddress || !chosenAddress) {
@@ -186,27 +245,40 @@ export default function CheckoutClient({
         };
       }
 
-      const { redirectUrl } = await createOrderAction(
+      const result = await createOrderAction(
         cart.map((i) => ({ id: i.pid, size: i.size, qty: i.qty })),
         address,
+        payment,
         appliedCoupon
       );
 
-      // O carrinho só é limpo na confirmação: se a pessoa desistir no
-      // provedor e voltar, a sacola ainda está lá.
-      window.location.href = redirectUrl;
-    } catch (err) {
-      const raw = err instanceof Error ? err.message : 'Erro ao criar o pedido';
-      setError(
-        raw.startsWith('ESTOQUE_INSUFICIENTE')
-          ? 'Uma das peças acabou de esgotar. Revise sua sacola.'
-          : raw.startsWith('CUPOM_INVALIDO')
-            ? raw.replace('CUPOM_INVALIDO:', '')
-            : 'Não conseguimos iniciar o pagamento. Tente novamente.'
-      );
-      setPlacing(false);
+      if (result.status !== 'rejected' && result.status !== 'error') {
+        // A sacola é esvaziada na confirmação. `placing` segue ligado para
+        // o botão não voltar a ficar clicável durante a navegação.
+        router.push(`/confirmacao?order_id=${result.orderId}`);
+        return;
+      }
+
+      if (result.status === 'rejected') {
+        return fail(`${REJECTION_MESSAGE[result.reason]} Nada foi cobrado.`);
+      }
+
+      if (result.code === 'cpf') {
+        setCpfError(result.message);
+        setPlacing(false);
+        document.getElementById('ck-cpf')?.focus();
+        return;
+      }
+      if (result.code === 'coupon') setCouponCode(null);
+      fail(result.message);
+    } catch {
+      fail('Não conseguimos concluir o pagamento agora. Nada foi cobrado — tente de novo em instantes.');
     }
   };
+
+  const total = quote ? formatCentavos(quote.totalCentavos) : '…';
+  const ctaLabel = method === 'pix' ? `Gerar código Pix · ${total}` : method === 'boleto' ? `Gerar boleto · ${total}` : `Pagar ${total}`;
+  const placingLabel = method === 'pix' ? 'gerando seu Pix…' : method === 'boleto' ? 'gerando seu boleto…' : 'processando o pagamento…';
 
   if (!hydrated) return <div className="pdl-app" style={{ minHeight: '60vh' }} />;
 
@@ -314,7 +386,7 @@ export default function CheckoutClient({
                 <i>{step > 1 ? '✓' : '1'}</i> entrega
               </button>
               <span className="sep" />
-              <span className={`step ${step === 2 ? 'active' : ''}`}><i>2</i> revisão e pagamento</span>
+              <span className={`step ${step === 2 ? 'active' : ''}`}><i>2</i> pagamento</span>
             </div>
 
             {/* Resumo recolhível — só no mobile */}
@@ -417,7 +489,7 @@ export default function CheckoutClient({
                   )}
 
                   <button className="pdl-btn pdl-btn--primary pdl-btn--lg pdl-btn--block" style={{ marginTop: 22 }} onClick={goToReview}>
-                    revisar pedido <IconArrowRight size={13} />
+                    continuar para o pagamento <IconArrowRight size={13} />
                   </button>
                 </section>
               </>
@@ -434,39 +506,108 @@ export default function CheckoutClient({
                   <button className="pdl-link" onClick={() => setStep(1)}>editar</button>
                 </div>
 
-                {/* ─── 2. Revisão e pagamento ───────────────── */}
-                <section className="pdl-checkout-section" style={{ borderBottom: 'none' }}>
-                  <h3>Como <em>pagar</em></h3>
-                  <div className="pdl-pay-card">
-                    <div className="name"><IconLock size={15} /> Pix, cartão <em>ou boleto</em></div>
-                    <div className="desc">
-                      Você escolhe a forma de pagamento no ambiente seguro do Mercado Pago, na próxima tela.
-                      Seus dados de cartão não passam pela nossa loja.
+                {/* ─── 2. Pagamento ─────────────────────────── */}
+                <section className="pdl-checkout-section pdl-pay" style={{ borderBottom: 'none' }}>
+                  <h3><span>Como você prefere <em>pagar?</em></span></h3>
+
+                  <div className="pdl-pay-options" role="radiogroup" aria-label="Forma de pagamento">
+                    {METHODS.map((m) => {
+                      const selected = method === m.id;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          className={`pdl-pay-option${selected ? ' selected' : ''}`}
+                          onClick={() => { setMethod(m.id); setError(null); }}
+                          disabled={placing}
+                        >
+                          <span className="pdl-radio" aria-hidden />
+                          <span className="text">
+                            <span className="name">
+                              {m.name}
+                              {m.tag && <span className="tag">{m.tag}</span>}
+                            </span>
+                            <span className="desc">
+                              {m.id === 'card' && maxInstallments > 1 ? `Pague à vista ou em até ${maxInstallments}x, direto aqui na loja.` : m.desc}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pdl-pay-form">
+                    {method === 'card' && (
+                      MP_PUBLIC_KEY ? (
+                        <CardFields
+                          ref={cardRef}
+                          publicKey={MP_PUBLIC_KEY}
+                          amountCentavos={quote?.totalCentavos ?? 0}
+                          maxInstallments={maxInstallments}
+                          disabled={placing}
+                        />
+                      ) : (
+                        <div className="pdl-note" role="status">
+                          O pagamento com cartão está indisponível no momento. Você pode pagar com Pix ou boleto.
+                        </div>
+                      )
+                    )}
+
+                    <div className="pdl-field-group">
+                      <label className="pdl-pay-label" htmlFor="ck-cpf">
+                        {method === 'card' ? 'CPF do titular do cartão' : 'CPF de quem vai pagar'}
+                      </label>
+                      <input
+                        id="ck-cpf"
+                        className={`pdl-field${cpfError ? ' pdl-field--error' : ''}`}
+                        value={cpf}
+                        inputMode="numeric"
+                        autoComplete="off"
+                        placeholder="000.000.000-00"
+                        onChange={(e) => { setCpf(formatCPF(e.target.value)); setCpfError(null); }}
+                        onBlur={() => { if (cpf && !isValidCPF(cpf)) setCpfError('Confira o CPF: são 11 números.'); }}
+                        aria-invalid={!!cpfError}
+                        aria-describedby="ck-cpf-hint"
+                        disabled={placing}
+                      />
+                      {cpfError
+                        ? <span className="pdl-field-error" id="ck-cpf-hint" role="alert">{cpfError}</span>
+                        : <span className="pdl-pay-hint" id="ck-cpf-hint">O banco pede o CPF para identificar o pagamento.</span>}
                     </div>
-                    <div className="pdl-pay-methods">
-                      <span>Pix</span><span>Crédito</span><span>Débito</span><span>Boleto</span>
-                    </div>
+
+                    {method === 'pix' && (
+                      <p className="pdl-pay-explain">
+                        Na próxima tela mostramos um <strong>código</strong> para você pagar no aplicativo do seu banco.
+                        A confirmação chega em poucos segundos.
+                      </p>
+                    )}
+                    {method === 'boleto' && (
+                      <p className="pdl-pay-explain">
+                        Na próxima tela você recebe o <strong>boleto</strong> para pagar onde preferir.
+                        O pedido é enviado depois que o banco confirmar o pagamento.
+                      </p>
+                    )}
                   </div>
 
                   {error && (
-                    <div role="alert" className="pdl-note pdl-note--error" style={{ marginTop: 16 }}>
+                    <div ref={errorRef} role="alert" className="pdl-note pdl-note--error" style={{ marginTop: 16, fontSize: 15 }}>
                       {error}
                     </div>
                   )}
 
                   <div className="pdl-cart-cta pdl-cart-cta--checkout">
                     <button
-                      className="pdl-btn pdl-btn--primary pdl-btn--lg pdl-btn--block"
+                      className="pdl-btn pdl-btn--primary pdl-btn--lg pdl-btn--block pdl-pay-submit"
                       onClick={placeOrder}
-                      disabled={placing || quoteLoading || !quote}
+                      disabled={placing || quoteLoading || !quote || (method === 'card' && !MP_PUBLIC_KEY)}
                     >
-                      {placing ? 'preparando o pagamento…' : (
-                        <>ir para o pagamento seguro · {quote ? formatCentavos(quote.totalCentavos) : '…'} <IconArrowRight size={13} /></>
-                      )}
+                      {placing ? placingLabel : ctaLabel}
                     </button>
                     <div className="pdl-cart-secure">
                       <IconLock size={12} />
-                      você só paga na próxima tela · trocas em 30 dias
+                      pagamento seguro · processado pelo Mercado Pago
                     </div>
                   </div>
                 </section>

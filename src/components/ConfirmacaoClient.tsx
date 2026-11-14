@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import PageWrapper from '@/components/PageWrapper';
+import PayInstructions from '@/components/PayInstructions';
 import { Sparkle } from '@/components/Icons';
 import { useCart } from '@/context/CartContext';
 import { formatCentavos } from '@/lib/money';
@@ -15,10 +16,11 @@ const PAYMENT_LABEL: Record<string, string> = {
   boleto: 'Boleto bancário',
 };
 
-// Pix costuma confirmar em segundos; depois desse tempo, esperar mais um
-// pouco polling não ajuda — a pessoa já deve ter saído da tela.
-const POLL_INTERVAL_MS = 4000;
-const POLL_TIMEOUT_MS = 3 * 60 * 1000;
+// Pix costuma confirmar em segundos depois de pago, mas a pessoa pode
+// levar um bom tempo até abrir o aplicativo do banco e voltar. A tela
+// espera meia hora sem pedir que ninguém recarregue nada.
+const POLL_INTERVAL_MS = 5000;
+const POLL_TIMEOUT_MS = 30 * 60 * 1000;
 
 export default function ConfirmacaoClient({ order: initialOrder }: { order: Order }) {
   const { clearCart } = useCart();
@@ -67,9 +69,9 @@ export default function ConfirmacaoClient({ order: initialOrder }: { order: Orde
   const isRejected = order.status === 'recusado' || order.status === 'cancelado';
 
   const paymentLabel = order.paymentMethod
-    ? PAYMENT_LABEL[order.paymentMethod] ?? order.paymentMethod
+    ? `${PAYMENT_LABEL[order.paymentMethod] ?? order.paymentMethod}${isPending ? ' · aguardando pagamento' : ''}`
     : isPending
-      ? 'Aguardando confirmação'
+      ? 'Aguardando pagamento'
       : 'Confirmado';
 
   const customerName = (order.address?.name ?? '').split(' ')[0] || 'cliente';
@@ -84,7 +86,7 @@ export default function ConfirmacaoClient({ order: initialOrder }: { order: Orde
 
         <h2>
           {isRejected ? <>Pagamento <em>não concluído</em></>
-            : isPending ? <>Pedido <em>registrado!</em></>
+            : isPending ? <>Pedido <em>reservado!</em></>
             : <>Pedido <em>confirmado!</em></>}
         </h2>
 
@@ -95,15 +97,17 @@ export default function ConfirmacaoClient({ order: initialOrder }: { order: Orde
             <>O pagamento não foi aprovado, então ainda não separamos as peças.
               Você pode tentar de novo quando quiser.</>
           ) : isPending ? (
-            <>Obrigada, {customerName}. Assim que o pagamento for confirmado, avisamos
-              em <strong style={{ color: 'var(--ink)', fontStyle: 'normal' }}>{email}</strong> e
-              começamos a preparar tudo. Pix costuma levar segundos; boleto, até 2 dias úteis.</>
+            <>Obrigada, {customerName}. Suas peças estão separadas — falta só o pagamento.
+              Quando ele for confirmado, avisamos
+              em <strong style={{ color: 'var(--ink)', fontStyle: 'normal' }}>{email}</strong>.</>
           ) : (
             <>Obrigada, {customerName}. Estamos preparando cada peça com carinho — você vai
               receber um e-mail em <strong style={{ color: 'var(--ink)', fontStyle: 'normal' }}>{email}</strong> assim
               que sair do nosso ateliê.</>
           )}
         </p>
+
+        {isPending && <PayInstructions orderId={order.id} totalLabel={formatCentavos(order.totalCentavos)} />}
 
         <div className="pdl-confirm-summary">
           <div className="lbl">total</div>
@@ -128,6 +132,11 @@ export default function ConfirmacaoClient({ order: initialOrder }: { order: Orde
           {isRejected ? (
             <>
               <Link href="/checkout" className="pdl-btn pdl-btn--primary pdl-btn--lg pdl-btn--block">tentar pagar de novo</Link>
+              <Link href="/" className="pdl-link">voltar para a loja</Link>
+            </>
+          ) : isPending ? (
+            <>
+              <Link href={`/pedido/${order.id}`} className="pdl-btn pdl-btn--outline pdl-btn--lg pdl-btn--block">ver meu pedido</Link>
               <Link href="/" className="pdl-link">voltar para a loja</Link>
             </>
           ) : (

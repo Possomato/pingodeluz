@@ -1,29 +1,36 @@
 import MercadoPagoConfig, { Order, Payment } from 'mercadopago';
+import type { OrderResponse } from 'mercadopago/dist/clients/order/commonTypes';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { reaisToCentavos } from './amount';
-import type {
-  CreateCheckoutInput,
-  CreateCheckoutResult,
-  NormalizedPaymentStatus,
-  PaymentGateway,
-  PaymentNotification,
-  WebhookVerification,
+import {
+  PaymentRequestError,
+  type CreatePaymentInput,
+  type CreatePaymentResult,
+  type NormalizedPaymentStatus,
+  type PaymentGateway,
+  type PaymentInstructions,
+  type PaymentNotification,
+  type PaymentRejection,
+  type WebhookVerification,
 } from './types';
 
 /**
- * Adaptador Mercado Pago — Checkout Pro sobre a API de Orders (ADR-4).
+ * Adaptador Mercado Pago — Checkout Transparente sobre a API de Orders.
  *
  * Este é o único arquivo do projeto que importa o SDK do Mercado Pago.
  * Tudo aqui dentro traduz entre o vocabulário do provedor e o contrato
  * em `types.ts`.
  *
- * Fluxo: `POST /v1/orders` (type `online`, processing_mode `manual`)
- * devolve um `checkout_url`; o cliente paga lá; o MP avisa pelo webhook
- * com `type: "order"` e buscamos a order com `GET /v1/orders/{id}`.
+ * Fluxo: `POST /v1/orders` (type `online`, processing_mode `automatic`)
+ * já cria e processa a cobrança. Cartão responde na hora (aprovado ou
+ * recusado); Pix e boleto ficam `action_required` e devolvem o código
+ * para pagar. Mudanças posteriores chegam pelo webhook `type: "order"`.
  *
- * A API de Preferences (fluxo antigo) não cria mais cobranças, mas o
- * webhook ainda entende notificações `type: "payment"` para pedidos que
- * nasceram antes da migração e podem ser pagos ou estornados depois.
+ * O número do cartão nunca passa por aqui: o navegador o troca por um
+ * token nos campos seguros do Mercado Pago (ADR-4).
+ *
+ * O webhook ainda entende notificações `type: "payment"` de pedidos
+ * criados pela API antiga (Preferences).
  */
 
 // ─── Tradução de vocabulário ─────────────────────────────────
@@ -95,6 +102,21 @@ export function normalizeMethod(
   return 'credit_card';
 }
 
+/** `status_detail` de uma cobrança recusada → motivo do domínio. */
+export function normalizeRejection(statusDetail: string | undefined): PaymentRejection {
+  const d = (statusDetail ?? '').toLowerCase();
+  if (d.includes('insufficient')) return 'insufficient_funds';
+  if (d.includes('bad_filled') || d.includes('invalid_card') || d.includes('security_code') || d.includes('expired')) {
+    return 'card_data';
+  }
+  if (d.includes('installments') || d.includes('transaction_amount')) return 'installments';
+  if (d.includes('risk') || d.includes('fraud') || d.includes('blacklist') || d.includes('regulations')) return 'risk';
+  if (d.includes('issuer') || d.includes('call_for_authorize') || d.includes('card_disabled') || d.includes('max_attempts')) {
+    return 'issuer';
+  }
+  return 'other';
+}
+
 // ─── Referência externa ──────────────────────────────────────
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -132,7 +154,9 @@ const brl = (centavos: number) => (centavos / 100).toFixed(2);
  * fecharem por qualquer motivo), uma linha única com o valor final — o
  * que o MP mostra é só exibição; o que vale é o total.
  */
-export function buildOrderLines(input: CreateCheckoutInput): OrderLine[] {
+export function buildOrderLines(
+  input: Pick<CreatePaymentInput, 'items' | 'freightCentavos' | 'discountCentavos' | 'totalCentavos' | 'orderNumber'>
+): OrderLine[] {
   const lines: OrderLine[] = input.items.map((item) => ({
     external_code: item.id,
     title: item.title,
@@ -204,9 +228,131 @@ export function verifyMercadoPagoSignature(params: {
   return ok ? { valid: true } : { valid: false, reason: 'SIGNATURE_MISMATCH' };
 }
 
-// ─── Gateway ─────────────────────────────────────────────────
+// ─── Corpo da order e leitura da resposta ────────────────────
 
 type OrderCreateBody = Parameters<Order['create']>[0]['body'];
+
+const digits = (v: string) => v.replace(/\D/g, '');
+
+/** Monta o `POST /v1/orders`. Pura, para ser testada sem rede. */
+export function buildOrderBody(input: CreatePaymentInput): OrderCreateBody {
+  const total = brl(input.totalCentavos);
+  const [firstName, ...rest] = input.payer.name.trim().split(/\s+/);
+  const a = input.payer.address;
+
+  const method = input.method;
+  const paymentMethod =
+    method.kind === 'pix'
+      ? { id: 'pix', type: 'bank_transfer' }
+      : method.kind === 'boleto'
+        ? { id: 'boleto', type: 'ticket' }
+        : {
+            id: method.brand,
+            type: method.cardType,
+            token: method.token,
+            installments: method.cardType === 'debit_card' ? 1 : method.installments,
+            statement_descriptor: 'PINGODELUZ',
+          };
+
+  return {
+    type: 'online',
+    processing_mode: 'automatic',
+    total_amount: total,
+    external_reference: toExternalReference(input.orderId),
+    description: `Pedido ${input.orderNumber} · Pingo de Luz`,
+    payer: {
+      email: input.payer.email,
+      ...(firstName ? { first_name: firstName } : {}),
+      ...(rest.length ? { last_name: rest.join(' ') } : {}),
+      identification: { type: 'CPF', number: digits(input.payer.cpf) },
+      ...(a
+        ? {
+            address: {
+              zip_code: digits(a.zip),
+              street_name: a.street,
+              street_number: a.number,
+              neighborhood: a.neighborhood,
+              city: a.city,
+              state: a.state,
+              ...(a.complement ? { complement: a.complement } : {}),
+            },
+          }
+        : {}),
+    },
+    items: buildOrderLines(input),
+    transactions: { payments: [{ amount: total, payment_method: paymentMethod }] },
+  } as OrderCreateBody;
+}
+
+const toCentavos = (v: string | undefined) => reaisToCentavos(v != null ? Number(v) : undefined);
+
+function lastPayment(order: OrderResponse) {
+  // Na order com mais de uma tentativa, a última é a que vale.
+  const payments = order.transactions?.payments ?? [];
+  return payments[payments.length - 1];
+}
+
+/**
+ * Valor pago, para conferir contra o pedido. No parcelado com juros o
+ * cliente paga mais que o total — a diferença é do financiamento, não
+ * da loja — então pagar a mais conta como o total exato.
+ */
+export function paidCentavosOf(order: Pick<OrderResponse, 'total_amount' | 'total_paid_amount'>): number | undefined {
+  const paid = toCentavos(order.total_paid_amount);
+  const total = toCentavos(order.total_amount);
+  if (paid === undefined) return undefined;
+  return total !== undefined && paid >= total ? total : paid;
+}
+
+/** Pix ou boleto ainda em aberto dentro de uma order. */
+export function instructionsFromOrder(order: OrderResponse): PaymentInstructions | null {
+  const payment = lastPayment(order);
+  const pm = payment?.payment_method;
+  if (!pm) return null;
+
+  if (pm.qr_code) {
+    return {
+      kind: 'pix',
+      code: pm.qr_code,
+      qrCodeBase64: pm.qr_code_base64,
+      expiresAt: payment?.date_of_expiration,
+    };
+  }
+  if (pm.type === 'ticket' && pm.ticket_url) {
+    return {
+      kind: 'boleto',
+      url: pm.ticket_url,
+      digitableLine: pm.digitable_line,
+      expiresAt: payment?.date_of_expiration,
+    };
+  }
+  return null;
+}
+
+export function notificationFromOrder(order: OrderResponse): PaymentNotification | null {
+  if (!order.external_reference) return null;
+  const pm = lastPayment(order)?.payment_method;
+
+  return {
+    // O status entra na chave para que uma transição real (pendente →
+    // pago) seja processada, mas reentregas do mesmo evento não.
+    eventId: `${order.id}:${order.status}:${order.status_detail ?? ''}`,
+    externalPaymentId: String(order.id),
+    orderId: fromExternalReference(order.external_reference),
+    status: normalizeOrderStatus(order.status, order.status_detail),
+    method: normalizeMethod(pm?.id, pm?.type),
+    amountCentavos: paidCentavosOf(order),
+    raw: order,
+  };
+}
+
+// ─── Gateway ─────────────────────────────────────────────────
+
+/** Formato do erro que o SDK lança quando a API responde fora de 2xx. */
+interface MpApiError {
+  data?: OrderResponse;
+  errors?: { code?: string; message?: string; details?: string[] }[];
+}
 
 export class MercadoPagoGateway implements PaymentGateway {
   readonly provider = 'mercadopago';
@@ -220,48 +366,48 @@ export class MercadoPagoGateway implements PaymentGateway {
     this.client = new MercadoPagoConfig({ accessToken });
   }
 
-  async createCheckout(input: CreateCheckoutInput): Promise<CreateCheckoutResult> {
-    const order = new Order(this.client);
-    const [firstName, ...rest] = (input.payerName ?? '').trim().split(/\s+/);
+  async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
+    let order: OrderResponse;
 
-    // `notificationUrl` não entra aqui: na API de Orders o webhook só é
-    // configurado no painel do MP (evento "Order (Mercado Pago)").
-    const body = {
-      type: 'online',
-      processing_mode: 'manual',
-      total_amount: brl(input.totalCentavos),
-      external_reference: toExternalReference(input.orderId),
-      description: `Pedido ${input.orderNumber}`,
-      payer: {
-        email: input.payerEmail,
-        ...(firstName ? { first_name: firstName } : {}),
-        ...(rest.length ? { last_name: rest.join(' ') } : {}),
-      },
-      items: buildOrderLines(input),
-      config: {
-        statement_descriptor: 'PINGODELUZ',
-        online: {
-          success_url: input.successUrl,
-          failure_url: input.failureUrl,
-          pending_url: input.pendingUrl,
-          auto_return: 'approved',
+    try {
+      order = await new Order(this.client).create({
+        body: buildOrderBody(input),
+        requestOptions: {
+          // Um pedido da loja = uma cobrança: repetir a chamada (rede
+          // instável, duplo clique) não cobra duas vezes.
+          idempotencyKey: input.orderId,
+          ...(input.deviceId ? { meliSessionId: input.deviceId } : {}),
         },
-      },
-    } as OrderCreateBody;
-
-    const response = await order.create({
-      body,
-      // O id do pedido é único: uma nova tentativa do mesmo pedido não
-      // cria uma segunda cobrança no MP.
-      requestOptions: { idempotencyKey: input.orderId },
-    });
-
-    const checkoutUrl = (response as typeof response & { checkout_url?: string }).checkout_url;
-    if (!checkoutUrl) {
-      throw new Error('Mercado Pago não devolveu checkout_url');
+      });
+    } catch (err) {
+      const apiError = err as MpApiError;
+      // Cartão recusado volta como 402 com a order criada dentro de `data`.
+      if (apiError?.data?.id) {
+        order = apiError.data;
+      } else {
+        // Não chegou a existir cobrança (ex.: parcelamento indisponível).
+        const code = apiError?.errors?.[0]?.code ?? '';
+        console.error('[mercadopago] order recusada:', JSON.stringify(apiError?.errors ?? err));
+        throw new PaymentRequestError(normalizeRejection(code), code || 'falha ao criar a cobrança');
+      }
     }
 
-    return { redirectUrl: checkoutUrl, externalId: response.id };
+    const notification = notificationFromOrder(order);
+    if (!notification) throw new Error('Mercado Pago devolveu order sem external_reference');
+
+    const failedDetail = lastPayment(order)?.status_detail ?? order.status_detail;
+
+    return {
+      notification,
+      ...(notification.status === 'rejected' ? { rejection: normalizeRejection(failedDetail) } : {}),
+      ...(notification.status === 'pending' ? { instructions: instructionsFromOrder(order) ?? undefined } : {}),
+    };
+  }
+
+  async getInstructions(externalPaymentId: string): Promise<PaymentInstructions | null> {
+    const order = await new Order(this.client).get({ id: externalPaymentId });
+    if (normalizeOrderStatus(order.status, order.status_detail) !== 'pending') return null;
+    return instructionsFromOrder(order);
   }
 
   verifyWebhook(request: Request, _rawBody: string): WebhookVerification {
@@ -288,35 +434,14 @@ export class MercadoPagoGateway implements PaymentGateway {
     const id = body.data?.id ? String(body.data.id) : '';
     if (!id) return null;
 
-    if (body.type === 'order') return this.parseOrder(id);
-    // Pedidos criados antes da migração para Orders.
+    if (body.type === 'order') {
+      return notificationFromOrder(await new Order(this.client).get({ id }));
+    }
+    // Pedidos criados pela API antiga (Preferences).
     if (body.type === 'payment') return this.parseLegacyPayment(id);
 
     // merchant_order, chargebacks avulsos, etc. — nada a fazer.
     return null;
-  }
-
-  private async parseOrder(id: string): Promise<PaymentNotification | null> {
-    const data = await new Order(this.client).get({ id });
-    if (!data.external_reference) return null;
-
-    // Na order com mais de uma tentativa, a última é a que vale.
-    const payments = data.transactions?.payments ?? [];
-    const payment = payments[payments.length - 1];
-
-    return {
-      // O status entra na chave para que uma transição real (created →
-      // processed) seja processada, mas reentregas do mesmo evento não.
-      eventId: `${data.id}:${data.status}:${data.status_detail ?? ''}`,
-      externalPaymentId: String(data.id),
-      orderId: fromExternalReference(data.external_reference),
-      status: normalizeOrderStatus(data.status, data.status_detail),
-      method: normalizeMethod(payment?.payment_method?.id, payment?.payment_method?.type),
-      amountCentavos: reaisToCentavos(
-        data.total_paid_amount != null ? Number(data.total_paid_amount) : undefined
-      ),
-      raw: data,
-    };
   }
 
   private async parseLegacyPayment(id: string): Promise<PaymentNotification | null> {

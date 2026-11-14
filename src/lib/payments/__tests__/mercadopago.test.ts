@@ -103,8 +103,13 @@ import {
   toExternalReference,
   fromExternalReference,
   buildOrderLines,
+  buildOrderBody,
+  normalizeRejection,
+  paidCentavosOf,
+  instructionsFromOrder,
+  notificationFromOrder,
 } from '../mercadopago';
-import type { CreateCheckoutInput } from '../types';
+import type { CreatePaymentInput } from '../types';
 
 test('order: status processado/creditado é aprovado', () => {
   assert.equal(normalizeOrderStatus('processed', 'accredited'), 'approved');
@@ -149,7 +154,7 @@ test('assinatura de order aceita data.id em minúsculas', () => {
   assert.equal(verifyMercadoPagoSignature(upper).valid, true);
 });
 
-const baseInput: CreateCheckoutInput = {
+const baseInput: CreatePaymentInput = {
   orderId: '3f2b8c1e-4a5d-4e6f-9a0b-1c2d3e4f5a6b',
   orderNumber: 'PDL-10001',
   items: [
@@ -159,8 +164,13 @@ const baseInput: CreateCheckoutInput = {
   totalCentavos: 2 * 27000 + 18990 + 2400,
   freightCentavos: 2400,
   discountCentavos: 0,
-  payerEmail: 'ana@exemplo.com',
-  successUrl: 's', failureUrl: 'f', pendingUrl: 'p', notificationUrl: 'n',
+  payer: {
+    email: 'ana@exemplo.com',
+    name: 'Ana Maria de Souza',
+    cpf: '123.456.789-09',
+    address: { zip: '01310-100', street: 'Av. Paulista', number: '1000', neighborhood: 'Bela Vista', city: 'São Paulo', state: 'SP' },
+  },
+  method: { kind: 'pix' },
 };
 
 const sumLines = (lines: ReturnType<typeof buildOrderLines>) =>
@@ -186,4 +196,105 @@ test('itens da order: total que não fecha cai na linha única', () => {
   const lines = buildOrderLines(input);
   assert.equal(lines.length, 1);
   assert.equal(sumLines(lines), input.totalCentavos);
+});
+
+// ─── Checkout transparente ───────────────────────────────────
+
+type Body = {
+  type: string; processing_mode: string; total_amount: string; external_reference: string;
+  payer: { email: string; first_name?: string; last_name?: string; identification: { type: string; number: string }; address?: { zip_code: string } };
+  transactions: { payments: { amount: string; payment_method: Record<string, unknown> }[] };
+};
+
+test('order transparente: Pix em modo automático, valor igual ao total', () => {
+  const body = buildOrderBody(baseInput) as unknown as Body;
+  assert.equal(body.type, 'online');
+  assert.equal(body.processing_mode, 'automatic');
+  assert.equal(body.total_amount, '753.90');
+  assert.equal(body.transactions.payments[0].amount, body.total_amount);
+  assert.deepEqual(body.transactions.payments[0].payment_method, { id: 'pix', type: 'bank_transfer' });
+  assert.match(body.external_reference, /^[0-9a-f]{32}$/);
+});
+
+test('order transparente: pagador com CPF e CEP só em dígitos, nome dividido', () => {
+  const body = buildOrderBody(baseInput) as unknown as Body;
+  assert.deepEqual(body.payer.identification, { type: 'CPF', number: '12345678909' });
+  assert.equal(body.payer.first_name, 'Ana');
+  assert.equal(body.payer.last_name, 'Maria de Souza');
+  assert.equal(body.payer.address?.zip_code, '01310100');
+});
+
+test('order transparente: boleto e cartão', () => {
+  const boleto = buildOrderBody({ ...baseInput, method: { kind: 'boleto' } }) as unknown as Body;
+  assert.deepEqual(boleto.transactions.payments[0].payment_method, { id: 'boleto', type: 'ticket' });
+
+  const card = buildOrderBody({
+    ...baseInput,
+    method: { kind: 'card', token: 'tok_123', brand: 'visa', cardType: 'credit_card', installments: 3 },
+  }) as unknown as Body;
+  const pm = card.transactions.payments[0].payment_method;
+  assert.equal(pm.id, 'visa');
+  assert.equal(pm.type, 'credit_card');
+  assert.equal(pm.token, 'tok_123');
+  assert.equal(pm.installments, 3);
+});
+
+test('order transparente: débito é sempre à vista', () => {
+  const body = buildOrderBody({
+    ...baseInput,
+    method: { kind: 'card', token: 't', brand: 'debelo', cardType: 'debit_card', installments: 6 },
+  }) as unknown as Body;
+  assert.equal(body.transactions.payments[0].payment_method.installments, 1);
+});
+
+test('motivo da recusa traduzido para o domínio', () => {
+  assert.equal(normalizeRejection('insufficient_amount'), 'insufficient_funds');
+  assert.equal(normalizeRejection('rejected_by_issuer'), 'issuer');
+  assert.equal(normalizeRejection('bad_filled_security_code'), 'card_data');
+  assert.equal(normalizeRejection('high_risk'), 'risk');
+  assert.equal(normalizeRejection('invalid_transaction_amount'), 'installments');
+  assert.equal(normalizeRejection('algo_novo'), 'other');
+  assert.equal(normalizeRejection(undefined), 'other');
+});
+
+test('valor pago: juros do parcelamento não viram divergência', () => {
+  assert.equal(paidCentavosOf({ total_amount: '270.00', total_paid_amount: '270.00' }), 27000);
+  assert.equal(paidCentavosOf({ total_amount: '270.00', total_paid_amount: '291.60' }), 27000);
+  assert.equal(paidCentavosOf({ total_amount: '270.00', total_paid_amount: '100.00' }), 10000);
+  assert.equal(paidCentavosOf({ total_amount: '270.00' }), undefined);
+});
+
+const pixOrder = {
+  id: 'ORD01', status: 'action_required', status_detail: 'waiting_transfer',
+  external_reference: '3f2b8c1e4a5d4e6f9a0b1c2d3e4f5a6b', total_amount: '27.00', total_paid_amount: '0.00',
+  transactions: { payments: [{
+    date_of_expiration: '2026-11-15T13:40:33.658+00:00',
+    payment_method: { id: 'pix', type: 'bank_transfer', qr_code: '000201…', qr_code_base64: 'iVBOR…', ticket_url: 'https://mp/x' },
+  }] },
+} as unknown as Parameters<typeof instructionsFromOrder>[0];
+
+test('instruções: Pix com copia e cola, QR e validade', () => {
+  assert.deepEqual(instructionsFromOrder(pixOrder), {
+    kind: 'pix', code: '000201…', qrCodeBase64: 'iVBOR…', expiresAt: '2026-11-15T13:40:33.658+00:00',
+  });
+});
+
+test('instruções: boleto com link e linha digitável; cartão não tem', () => {
+  const boleto = { ...pixOrder, transactions: { payments: [{ payment_method: { id: 'boleto', type: 'ticket', ticket_url: 'https://mp/b', digitable_line: '2379' } }] } } as typeof pixOrder;
+  const r = instructionsFromOrder(boleto);
+  assert.equal(r?.kind, 'boleto');
+  assert.equal(r?.kind === 'boleto' && r.url, 'https://mp/b');
+  assert.equal(r?.kind === 'boleto' && r.digitableLine, '2379');
+
+  const card = { ...pixOrder, transactions: { payments: [{ payment_method: { id: 'visa', type: 'credit_card' } }] } } as typeof pixOrder;
+  assert.equal(instructionsFromOrder(card), null);
+});
+
+test('notificação a partir da order: pedido, status e método', () => {
+  const n = notificationFromOrder(pixOrder);
+  assert.equal(n?.orderId, '3f2b8c1e-4a5d-4e6f-9a0b-1c2d3e4f5a6b');
+  assert.equal(n?.status, 'pending');
+  assert.equal(n?.method, 'pix');
+  assert.equal(n?.eventId, 'ORD01:action_required:waiting_transfer');
+  assert.equal(notificationFromOrder({ ...pixOrder, external_reference: undefined } as typeof pixOrder), null);
 });

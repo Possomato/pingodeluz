@@ -4,6 +4,7 @@ import { getMyOrderAction } from '@/app/actions/orders';
 import { formatCentavos } from '@/lib/money';
 import PdlImg from '@/components/PdlImg';
 import PageWrapper from '@/components/PageWrapper';
+import PayInstructions from '@/components/PayInstructions';
 
 export const metadata = { title: 'Seu pedido', robots: { index: false } };
 
@@ -70,6 +71,13 @@ export default async function PedidoPage({ params }: { params: Promise<{ id: str
               );
             })}
           </ol>
+        )}
+
+        {/* Pedido ainda não pago: o Pix ou o boleto continuam aqui. */}
+        {order.status === 'pendente' && (
+          <div style={{ marginBottom: 20 }}>
+            <PayInstructions orderId={order.id} totalLabel={formatCentavos(order.totalCentavos)} />
+          </div>
         )}
 
         {order.trackingCode && (
