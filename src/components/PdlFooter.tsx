@@ -20,8 +20,7 @@ const COLS: FooterCol[] = [
   {
     title: 'Navegação',
     links: [
-      { label: 'Meninas', href: '/genero/meninas' },
-      { label: 'Meninos', href: '/genero/meninos' },
+      { label: 'Todas as peças', href: '/genero/meninas' },
       { label: 'Coleções', href: '/#colecoes' },
       { label: 'Minha conta', href: '/perfil' },
     ],

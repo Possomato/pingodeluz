@@ -49,11 +49,7 @@ export default function PdlDrawer({ open, onClose }: PdlDrawerProps) {
         <div className="pdl-drawer-section">
           <h4>comprar</h4>
           <button className="pdl-drawer-link" onClick={() => handle('/genero/meninas')}>
-            <span>Para <em>meninas</em></span>
-            <span className="meta">1m–14 anos</span>
-          </button>
-          <button className="pdl-drawer-link" onClick={() => handle('/genero/meninos')}>
-            <span>Para <em>meninos</em></span>
+            <span>Todas as <em>peças</em></span>
             <span className="meta">1m–14 anos</span>
           </button>
           <button className="pdl-drawer-link" onClick={() => handle('/#colecoes')}>

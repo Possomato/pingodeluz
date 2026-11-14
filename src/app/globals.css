@@ -252,6 +252,23 @@ select.pdl-field { padding-right: 40px; background-image: url("data:image/svg+xm
 .pdl-busca-empty em { color: var(--terra); }
 
 /* ─── Home ───────────────────────────────────────────────── */
+/* Abertura da home: a peça da vez */
+.pdl-hero { display: block; padding: 8px var(--gutter) 0; cursor: pointer; }
+.pdl-hero-media { position: relative; aspect-ratio: 4 / 5; border-radius: var(--r-lg); overflow: hidden; background: var(--cream-deep); }
+.pdl-hero-media .pdl-img { position: absolute; inset: 0; transition: transform 0.9s var(--ease); }
+.pdl-hero-body { padding: 20px 2px 0; display: flex; flex-direction: column; align-items: flex-start; }
+.pdl-hero-eyebrow { font-family: var(--sans); font-size: 10.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--terra); display: flex; align-items: center; gap: 8px; }
+.pdl-hero-eyebrow::before { content: ""; width: 18px; height: 1px; background: currentColor; }
+.pdl-hero-title { font-family: var(--serif); font-weight: 500; font-size: clamp(34px, 9vw, 56px); line-height: 1.02; letter-spacing: -0.015em; margin: 10px 0 0; color: var(--ink); }
+.pdl-hero-title em { font-family: var(--editorial); font-style: italic; font-weight: 400; }
+.pdl-hero-desc { margin: 12px 0 0; font-family: var(--editorial); font-size: 15.5px; line-height: 1.5; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; max-width: 46ch; }
+.pdl-hero-price { margin-top: 16px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.pdl-hero-price .now { font-family: var(--sans); font-weight: 700; font-size: 24px; letter-spacing: -0.01em; color: var(--ink); }
+.pdl-hero-price .inst { font-family: var(--editorial); font-style: italic; font-size: 14.5px; color: var(--muted); }
+.pdl-hero-sizes { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+.pdl-hero-sizes span { min-width: 38px; height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--r-pill); display: inline-flex; align-items: center; justify-content: center; font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--ink-soft); background: #fff; }
+.pdl-app .pdl-hero-cta { margin-top: 20px; width: 100%; min-height: 56px; font-size: 16px; }
+
 .pdl-welcome { padding: 22px var(--gutter) 10px; }
 .pdl-welcome .eyebrow { font-family: var(--sans); font-weight: 600; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--terra); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 .pdl-welcome .eyebrow::before { content: ""; width: 16px; height: 1px; background: currentColor; }
@@ -787,6 +804,13 @@ select.pdl-field { padding-right: 40px; background-image: url("data:image/svg+xm
   .pdl-search-header .pdl-search-results { width: 400px; left: auto; right: 0; }
   .pdl-logo-img { height: 56px; }
 
+  .pdl-hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 64px; align-items: center; padding: 32px 0 8px; }
+  .pdl-hero-media { aspect-ratio: 4 / 5; max-height: 640px; }
+  .pdl-hero-body { padding: 0; }
+  .pdl-hero-desc { font-size: 17px; -webkit-line-clamp: 4; }
+  .pdl-hero-price .now { font-size: 28px; }
+  .pdl-app .pdl-hero-cta { width: auto; min-width: 260px; }
+  .pdl-header-right { margin-left: auto; }
   .pdl-welcome { text-align: center; padding: 56px 80px 36px; }
   .pdl-welcome p { margin: 0 auto; }
   .pdl-genders { gap: 16px; }
@@ -896,4 +920,7 @@ select.pdl-field { padding-right: 40px; background-image: url("data:image/svg+xm
   .pdl-prod:hover .pdl-prod-name { color: var(--terra-deep); }
   .pdl-prod-name { transition: color 0.2s; }
   .pdl-col-card:hover .pdl-img, .pdl-gender-card:hover .pdl-img { transform: scale(1.03); }
+  .pdl-hero:hover .pdl-hero-media .pdl-img { transform: scale(1.03); }
+  .pdl-hero:hover .pdl-hero-cta { background: #1a160f; }
 }
+

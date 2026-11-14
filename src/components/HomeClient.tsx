@@ -7,62 +7,74 @@ import PdlImg from '@/components/PdlImg';
 import ProductCard from '@/components/ProductCard';
 import InstagramFeed from '@/components/InstagramFeed';
 import { Sparkle, IconArrowRight } from '@/components/Icons';
-import type { Product, Collection, HomepageSection, HomepageSectionId, Testimonial } from '@/lib/data';
+import { calcInstallments, isSizeAvailable, isSoldOut } from '@/lib/data';
+import type { Product, Collection, HomepageSection, HomepageSectionId, Testimonial, PaymentConfig } from '@/lib/data';
+import { formatCentavos } from '@/lib/money';
 
 interface Props {
   hpConfig: Record<HomepageSectionId, HomepageSection>;
   products: Product[];
+  /** Peça que abre a home (a mais vendida com estoque). */
+  featured: Product | null;
+  paymentConfig: PaymentConfig;
   collections: Record<string, Collection>;
   testimonials: Testimonial[];
 }
 
-export default function HomeClient({ hpConfig, products, collections, testimonials }: Props) {
+export default function HomeClient({ hpConfig, products, featured, paymentConfig, collections, testimonials }: Props) {
   const [testIdx, setTestIdx] = useState(0);
   const collectionList = Object.values(collections);
 
+  // A peça de abertura não se repete na vitrine logo abaixo.
+  const others = featured ? products.filter(p => p.id !== featured.id) : products;
+  const featuredSizes = featured ? (featured.sizes ?? []).filter(s => isSizeAvailable(featured, s)) : [];
+  const featuredInstallments = featured ? calcInstallments(featured.priceCentavos, paymentConfig) : null;
+  const featuredParts = featured?.nameParts ?? [featured?.name ?? '', ''];
+
   return (
     <PageWrapper>
-      <div className="pdl-welcome">
-        <div className="eyebrow">olá, mãe</div>
-        <h1>Para quem você procura <em>hoje?</em></h1>
-        <p>Escolha o universo dos pequenos e a gente cuida do resto.</p>
-      </div>
-      <div className="pdl-genders">
-        {hpConfig.meninas.visible && (
-          <Link href="/genero/meninas" className="pdl-gender-card">
-            <PdlImg tint="rose" imageUrl={hpConfig.meninas.imageUrls[0]} label="meninas · 1m–14" />
-            <div className="pdl-gender-overlay">
-              <span className="top">1m–14</span>
-              <div className="bottom">
-                <div className="label">Para<em>meninas</em></div>
-                <div className="meta">vestidos, conjuntos e mais</div>
-                <span className="arrow">explorar <IconArrowRight size={11} /></span>
-              </div>
+      {/* Abertura: uma peça só, grande, com tudo o que a pessoa precisa
+          para decidir — foto, nome, preço e um único botão. Nenhum selo:
+          o tamanho e a posição já dizem que é a peça da vez. */}
+      {featured ? (
+        <Link href={`/produto/${featured.id}`} className="pdl-hero" aria-label={`${featured.name}, ${formatCentavos(featured.priceCentavos)}`}>
+          <div className="pdl-hero-media">
+            <PdlImg tint={featured.tint} imageUrl={featured.imageUrl} label={featured.label} />
+          </div>
+          <div className="pdl-hero-body">
+            <div className="pdl-hero-eyebrow">{featured.col}</div>
+            <h1 className="pdl-hero-title">{featuredParts[0]} <em>{featuredParts[1]}</em></h1>
+            {featured.desc && <p className="pdl-hero-desc">{featured.desc}</p>}
+            <div className="pdl-hero-price">
+              <span className="now">{formatCentavos(featured.priceCentavos)}</span>
+              {featuredInstallments && <span className="inst">ou {featuredInstallments}</span>}
             </div>
-          </Link>
-        )}
-        {hpConfig.meninos.visible && (
-          <Link href="/genero/meninos" className="pdl-gender-card">
-            <PdlImg tint="ochre" imageUrl={hpConfig.meninos.imageUrls[0]} label="meninos · 1m–14" />
-            <div className="pdl-gender-overlay">
-              <span className="top">1m–14</span>
-              <div className="bottom">
-                <div className="label">Para<em>meninos</em></div>
-                <div className="meta">macacões, bermudas e mais</div>
-                <span className="arrow">explorar <IconArrowRight size={11} /></span>
+            {featuredSizes.length > 0 && (
+              <div className="pdl-hero-sizes" aria-label="Tamanhos disponíveis">
+                {featuredSizes.map(s => <span key={s}>{s}</span>)}
               </div>
-            </div>
-          </Link>
-        )}
-      </div>
+            )}
+            <span className="pdl-btn pdl-btn--primary pdl-btn--lg pdl-hero-cta">
+              {isSoldOut(featured) ? 'ver a peça' : 'quero este'} <IconArrowRight size={14} />
+            </span>
+          </div>
+        </Link>
+      ) : (
+        <div className="pdl-welcome">
+          <div className="eyebrow">olá, mãe</div>
+          <h1>Roupas feitas com <em>carinho</em></h1>
+          <p>Novas peças chegam em breve.</p>
+        </div>
+      )}
 
-      {hpConfig.queridos.visible && products.length > 0 && (
+      {hpConfig.queridos.visible && others.length > 0 && (
         <section className="pdl-section" aria-labelledby="queridos">
           <div className="pdl-section-head">
             <h2 id="queridos">Mais <em>queridos</em></h2>
+            <Link href="/genero/meninas" className="more">ver todas <IconArrowRight size={10} /></Link>
           </div>
           <div className="pdl-products">
-            {products.map(p => <ProductCard key={p.id} p={p} />)}
+            {others.map(p => <ProductCard key={p.id} p={p} />)}
           </div>
         </section>
       )}

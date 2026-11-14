@@ -60,11 +60,6 @@ export default function PdlHeader({ scrolled, onMenu, variant = 'default', backH
         </button>
       </div>
       <Logo onClick={() => router.push('/')} />
-      <nav className="pdl-header-nav" aria-label="Principal">
-        <Link href="/genero/meninas">Meninas</Link>
-        <Link href="/genero/meninos">Meninos</Link>
-        <Link href="/#colecoes">Coleções</Link>
-      </nav>
       <div className="pdl-header-right">
         <SearchBox variant="header" />
         <div className="pdl-header-icons">
