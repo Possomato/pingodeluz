@@ -8,7 +8,7 @@ import { HOMEPAGE_SECTION_IDS, HomepageSectionId } from '@/lib/data';
 import ImageCropUploader from '@/components/admin/ImageCropUploader';
 
 const SECTION_LABELS: Record<HomepageSectionId, string> = {
-  meninas: 'Card · Meninas',
+  meninas: 'Foto do topo de “Todas as peças”',
   meninos: 'Card · Meninos',
   queridos: 'Mais queridos',
   manifesto: 'Nosso manifesto',
@@ -53,11 +53,17 @@ export default function AdminHomepagePage() {
   return (
     <AdminLayout>
       <div className="adm-list-bar">
-        <h1 className="adm-page-title">Homepage</h1>
+        <div>
+          <h1 className="adm-page-title">Página inicial</h1>
+          <p className="adm-page-sub" style={{ margin: 0 }}>
+            Ligue e desligue as seções da vitrine. A peça que abre a página é escolhida sozinha:
+            é a mais vendida entre as que têm estoque.
+          </p>
+        </div>
       </div>
 
       <div className="adm-homepage-list">
-        {HOMEPAGE_SECTION_IDS.map(id => {
+        {(HOMEPAGE_SECTION_IDS.filter(id => id !== 'meninos' && id !== 'instagram') as HomepageSectionId[]).map(id => {
           const section = homepageConfig[id];
           const isInstagram = id === 'instagram';
 

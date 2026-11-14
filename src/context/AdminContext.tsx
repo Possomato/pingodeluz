@@ -59,7 +59,8 @@ interface AdminContextType {
   reload: () => Promise<void>;
 
   addProduct: (p: Omit<Product, 'id'>) => Promise<string | null>;
-  updateProduct: (id: string, p: Partial<Product>) => Promise<void>;
+  /** `true` quando gravou. */
+  updateProduct: (id: string, p: Partial<Product>) => Promise<boolean>;
   deleteProduct: (id: string) => Promise<void>;
   setProductActive: (id: string, active: boolean) => Promise<void>;
   adjustStock: (productId: string, size: string, qty: number) => Promise<void>;
@@ -173,13 +174,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const updateProduct = async (id: string, patch: Partial<Product>) => {
     const existing = products.find((p) => p.id === id);
-    if (!existing) return;
+    if (!existing) return false;
 
     const merged = { ...existing, ...patch };
     const updated: Product = { ...merged, imageUrl: merged.imageUrls?.[0] ?? merged.imageUrl };
 
     setProducts((prev) => prev.map((p) => (p.id === id ? updated : p)));
-    await persist(() => upsertProductAction(updated), 'Não foi possível salvar o produto.');
+    return persist(() => upsertProductAction(updated), 'Não foi possível salvar a peça.');
   };
 
   const deleteProduct = async (id: string) => {
@@ -306,6 +307,21 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       {children}
     </AdminContext.Provider>
   );
+}
+
+/**
+ * Tamanhos de uma peça na ordem da tabela de medidas (1m, 3m… 2, 4…),
+ * não na ordem em que foram gravados. Os que não estão na tabela vão
+ * para o fim.
+ */
+export function orderedSizes(p: Pick<Product, 'sizes' | 'sizeTableId'>, sizeTables: SizeTable[]): string[] {
+  const sizes = p.sizes ?? [];
+  const order = sizeTables.find((t) => t.id === p.sizeTableId)?.rows.map((r) => r.size) ?? [];
+  const rank = (s: string) => {
+    const i = order.indexOf(s);
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+  };
+  return [...sizes].sort((a, b) => rank(a) - rank(b));
 }
 
 export function useAdmin() {

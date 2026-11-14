@@ -3,66 +3,91 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import { getDashboardStatsAction } from '@/app/actions/orders';
 import { formatCentavos } from '@/lib/money';
 
+/**
+ * Início do painel: primeiro o que precisa de uma ação hoje, depois os
+ * números do mês. Quem abre o painel quer saber "o que eu faço agora?".
+ */
 export default async function DashboardPage() {
   const stats = await getDashboardStatsAction();
 
-  const cards = [
-    { label: 'Receita do mês', value: formatCentavos(stats.revenueCentavos) },
-    { label: 'Pedidos pagos no mês', value: String(stats.ordersThisMonth) },
-    { label: 'Aguardando envio', value: String(stats.pendingShipment), href: '/admin/pedidos?status=pago' },
-    { label: 'Precisam de atenção', value: String(stats.needsAttention), href: '/admin/pedidos', alert: stats.needsAttention > 0 },
-  ];
+  const soldOut = stats.lowStock.filter((p) => p.total === 0);
+  const running = stats.lowStock.filter((p) => p.total > 0);
+
+  const todo: { title: string; detail: string; href: string; action: string; alert?: boolean }[] = [];
+  if (stats.needsAttention > 0) {
+    todo.push({
+      title: `${stats.needsAttention} ${stats.needsAttention === 1 ? 'pedido precisa' : 'pedidos precisam'} de conferência`,
+      detail: 'O valor pago ou o estoque não bateu. Confira antes de enviar.',
+      href: '/admin/pedidos', action: 'Conferir', alert: true,
+    });
+  }
+  if (stats.pendingShipment > 0) {
+    todo.push({
+      title: `${stats.pendingShipment} ${stats.pendingShipment === 1 ? 'pedido pago para enviar' : 'pedidos pagos para enviar'}`,
+      detail: 'Separe as peças, poste e informe o código de rastreio.',
+      href: '/admin/pedidos?status=pago', action: 'Ver pedidos',
+    });
+  }
+  if (soldOut.length > 0) {
+    todo.push({
+      title: `${soldOut.length} ${soldOut.length === 1 ? 'peça esgotada' : 'peças esgotadas'} na loja`,
+      detail: soldOut.slice(0, 4).map((p) => p.name).join(', ') + (soldOut.length > 4 ? '…' : ''),
+      href: '/admin/estoque', action: 'Repor estoque',
+    });
+  }
+  if (running.length > 0) {
+    todo.push({
+      title: `${running.length} ${running.length === 1 ? 'peça acabando' : 'peças acabando'}`,
+      detail: running.slice(0, 4).map((p) => `${p.name} (${p.total})`).join(', ') + (running.length > 4 ? '…' : ''),
+      href: '/admin/estoque', action: 'Ver estoque',
+    });
+  }
 
   return (
     <AdminLayout>
-      <h1 className="adm-page-title">Início</h1>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginTop: 16 }}>
-        {cards.map((c) => {
-          const body = (
-            <div
-              style={{
-                border: `1px solid ${c.alert ? '#c0392b' : 'var(--border, #e5e0d8)'}`,
-                borderRadius: 4,
-                padding: '16px 18px',
-                height: '100%',
-              }}
-            >
-              <div style={{ fontSize: 11, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#888' }}>
-                {c.label}
-              </div>
-              <div style={{ fontFamily: 'var(--serif, serif)', fontSize: 26, marginTop: 6 }}>{c.value}</div>
-            </div>
-          );
-          return c.href
-            ? <Link key={c.label} href={c.href} style={{ textDecoration: 'none', color: 'inherit' }}>{body}</Link>
-            : <div key={c.label}>{body}</div>;
-        })}
+      <div className="adm-list-bar">
+        <div>
+          <h1 className="adm-page-title">Olá! <em>O que vamos fazer hoje?</em></h1>
+        </div>
+        <Link href="/admin/produtos/novo" className="adm-btn adm-btn-primary adm-btn-lg">+ Nova peça</Link>
       </div>
 
-      <h2 className="adm-page-title" style={{ fontSize: 18, marginTop: 32 }}>Estoque baixo</h2>
-      {stats.lowStock.length === 0 ? (
-        <p style={{ color: '#888' }}>Nenhuma peça com estoque crítico.</p>
+      <h2 className="adm-h2" style={{ marginTop: 8 }}>Para fazer agora</h2>
+      {todo.length === 0 ? (
+        <div className="adm-empty"><strong>Tudo em dia</strong>Nenhum pedido esperando e nenhuma peça esgotada.</div>
       ) : (
-        <table className="adm-table">
-          <thead><tr><th>Produto</th><th>Unidades</th><th></th></tr></thead>
-          <tbody>
-            {stats.lowStock.map((p) => (
-              <tr key={p.id}>
-                <td>{p.name}</td>
-                <td style={{ color: p.total === 0 ? '#c0392b' : undefined }}>
-                  {p.total === 0 ? 'esgotado' : p.total}
-                </td>
-                <td>
-                  <Link href={`/admin/produtos/${p.id}`} className="adm-btn adm-btn-secondary adm-btn-sm">
-                    Repor
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="adm-todo">
+          {todo.map((t) => (
+            <div key={t.title} className="adm-todo-item" style={t.alert ? { borderColor: 'var(--terra)', background: 'var(--terra-soft)' } : undefined}>
+              <div>
+                <div className="t">{t.title}</div>
+                <div className="d">{t.detail}</div>
+              </div>
+              <Link href={t.href} className="adm-btn adm-btn-secondary">{t.action}</Link>
+            </div>
+          ))}
+        </div>
       )}
+
+      <h2 className="adm-h2">Este mês</h2>
+      <div className="adm-stats">
+        <div className="adm-stat">
+          <div className="l">Vendas pagas</div>
+          <div className="v">{formatCentavos(stats.revenueCentavos)}</div>
+        </div>
+        <div className="adm-stat">
+          <div className="l">Pedidos pagos</div>
+          <div className="v">{stats.ordersThisMonth}</div>
+        </div>
+      </div>
+
+      <h2 className="adm-h2">Atalhos</h2>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+        <Link href="/admin/produtos" className="adm-btn adm-btn-secondary">Ver todas as peças</Link>
+        <Link href="/admin/estoque" className="adm-btn adm-btn-secondary">Ajustar estoque</Link>
+        <Link href="/admin/pedidos" className="adm-btn adm-btn-secondary">Todos os pedidos</Link>
+        <Link href="/admin/cupons" className="adm-btn adm-btn-secondary">Criar cupom</Link>
+      </div>
     </AdminLayout>
   );
 }

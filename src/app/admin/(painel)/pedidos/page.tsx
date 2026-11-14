@@ -10,12 +10,18 @@ const STATUSES = ['todos', 'pendente', 'pago', 'enviado', 'entregue', 'cancelado
 
 const STATUS_LABEL: Record<string, string> = {
   pendente: 'aguardando pagamento',
-  pago: 'pago · separar',
+  pago: 'pago · enviar',
   enviado: 'em trânsito',
   entregue: 'entregue',
   cancelado: 'cancelado',
   recusado: 'recusado',
   reembolsado: 'reembolsado',
+};
+
+/** Cor do selo: verde = andando bem, terra = espera uma ação, vermelho = não deu certo. */
+const STATUS_KIND: Record<string, string> = {
+  pendente: 'warn', pago: 'warn', enviado: 'ok', entregue: 'ok',
+  cancelado: '', recusado: 'bad', reembolsado: 'bad',
 };
 
 export default function AdminPedidosPage() {
@@ -94,7 +100,7 @@ export default function AdminPedidosPage() {
                   <td>{o.address?.name ?? '—'}</td>
                   <td>{o.items.reduce((n, i) => n + i.qty, 0)}</td>
                   <td>{formatCentavos(o.totalCentavos)}</td>
-                  <td>{STATUS_LABEL[o.status] ?? o.status}</td>
+                  <td><span className={`adm-pill ${STATUS_KIND[o.status] ?? ''}`}>{STATUS_LABEL[o.status] ?? o.status}</span></td>
                   <td>
                     <Link href={`/admin/pedidos/${o.id}`} className="adm-btn adm-btn-secondary adm-btn-sm">
                       Abrir

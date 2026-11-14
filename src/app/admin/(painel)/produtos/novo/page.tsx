@@ -1,24 +1,23 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import AdminLayout from '@/components/admin/AdminLayout';
+import ProductForm from '@/components/admin/ProductForm';
 import { useAdmin } from '@/context/AdminContext';
-import { ProductForm } from '../[id]/page';
-import { Product } from '@/lib/data';
+import type { Product } from '@/lib/data';
 
 export default function NewProductPage() {
   const { addProduct } = useAdmin();
-  const router = useRouter();
 
   return (
     <AdminLayout>
-      <div className="adm-list-bar">
-        <h1 className="adm-page-title">Novo <em>produto</em></h1>
-        <button className="adm-btn adm-btn-secondary" onClick={() => router.push('/admin/produtos')}>← Voltar</button>
-      </div>
+      <Link href="/admin/produtos" className="adm-back">← Peças</Link>
+      <h1 className="adm-page-title">Nova <em>peça</em></h1>
+      <p className="adm-page-sub">Quatro passos: fotos, nome e preço, tamanhos com estoque e publicar.</p>
       <ProductForm
+        isNew
         initial={{}}
-        onSave={p => { addProduct(p as Omit<Product, 'id'>); setTimeout(() => router.push('/admin/produtos'), 1500); }}
+        onSave={async p => (await addProduct(p as Omit<Product, 'id'>)) !== null}
       />
     </AdminLayout>
   );
