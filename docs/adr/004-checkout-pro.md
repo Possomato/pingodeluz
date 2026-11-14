@@ -26,3 +26,22 @@ removido do cálculo: o meio de pagamento só é conhecido depois do redirect,
 então não havia como aplicá-lo honestamente antes. O campo
 `shipping_config.pix_discount_percent` segue no banco para quando for
 configurado no próprio provedor.
+
+## Atualização · 2026-11-14 — Checkout Pro sobre a API de Orders
+
+O Mercado Pago passou a recomendar a API de Orders para o Checkout Pro e
+sinaliza a descontinuação da API de Preferences. O adaptador agora cria a
+cobrança com `POST /v1/orders` (`type: online`, `processing_mode: manual`)
+e redireciona para o `checkout_url`.
+
+Diferenças que afetam a operação:
+
+- O webhook não é mais enviado por requisição (`notification_url` não
+  existe). Ele é configurado no painel do MP, no evento **Order (Mercado
+  Pago)**, apontando para `/api/webhooks/mercadopago`.
+- A order exige que a soma dos itens seja igual ao total e não tem campo de
+  cupom. Com desconto, a cobrança vai como uma linha única com o valor final.
+- `external_reference` aceita só letras e números: o UUID do pedido vai sem
+  hífens e é reconstruído no webhook.
+- Notificações `type: payment` continuam aceitas para pedidos criados antes
+  da migração.

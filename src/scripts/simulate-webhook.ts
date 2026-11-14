@@ -1,13 +1,13 @@
 /**
- * Simula uma notificação de pagamento sem depender do provedor.
+ * Simula uma notificação de order (API de Orders) sem depender do provedor.
  *
- *   npx tsx src/scripts/simulate-webhook.ts <order_id> [status]
+ *   npx tsx src/scripts/simulate-webhook.ts <order_id> [mp_order_id]
  *
  * Monta o payload com assinatura HMAC válida, envia ao endpoint local e
  * mostra o resultado. Enviar duas vezes o mesmo evento deve devolver
  * `duplicate` na segunda — é assim que se confere a idempotência.
  *
- * Atenção: o adaptador consulta o pagamento no provedor para montar a
+ * Atenção: o adaptador consulta a order no provedor para montar a
  * notificação, então este script exercita a rota, a assinatura e a
  * idempotência; para exercitar a baixa de estoque de ponta a ponta use
  * as credenciais de teste do provedor com um túnel (ngrok).
@@ -21,10 +21,10 @@ for (const line of readFileSync('.env.local', 'utf8').split('\n')) {
 }
 
 const orderId = process.argv[2];
-const paymentId = process.argv[3] ?? String(Date.now());
+const mpOrderId = process.argv[3] ?? `ORDSIM${Date.now()}`;
 
 if (!orderId) {
-  console.error('uso: npx tsx src/scripts/simulate-webhook.ts <order_id> [payment_id]');
+  console.error('uso: npx tsx src/scripts/simulate-webhook.ts <order_id> [mp_order_id]');
   process.exit(1);
 }
 
@@ -38,11 +38,11 @@ const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
 const requestId = `sim-${Date.now()}`;
 const ts = String(Math.floor(Date.now() / 1000));
 
-const manifest = `id:${paymentId};request-id:${requestId};ts:${ts};`;
+const manifest = `id:${mpOrderId.toLowerCase()};request-id:${requestId};ts:${ts};`;
 const v1 = createHmac('sha256', secret).update(manifest).digest('hex');
 
-const url = `${base}/api/webhooks/mercadopago?data.id=${paymentId}`;
-const body = JSON.stringify({ type: 'payment', data: { id: paymentId } });
+const url = `${base}/api/webhooks/mercadopago?data.id=${mpOrderId}&type=order`;
+const body = JSON.stringify({ action: "order.processed", type: "order", api_version: "v1", data: { id: mpOrderId } });
 
 console.log(`→ POST ${url}`);
 console.log(`  pedido: ${orderId}`);

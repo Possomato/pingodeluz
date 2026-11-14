@@ -8,18 +8,18 @@ import { test, expect } from '@playwright/test';
 test.describe('webhook de pagamento', () => {
   test('sem cabeçalho de assinatura, o webhook recusa com 401', async ({ request }) => {
     const res = await request.post('/api/webhooks/mercadopago', {
-      data: { type: 'payment', data: { id: '123' } },
+      data: { type: 'order', action: 'order.processed', data: { id: 'ORD123' } },
     });
     expect(res.status()).toBe(401);
   });
 
   test('assinatura forjada é recusada com 401', async ({ request }) => {
-    const res = await request.post('/api/webhooks/mercadopago?data.id=123', {
+    const res = await request.post('/api/webhooks/mercadopago?data.id=ORD123&type=order', {
       headers: {
         'x-signature': 'ts=1700000000,v1=assinatura-forjada-nao-bate',
         'x-request-id': 'req-abc',
       },
-      data: { type: 'payment', data: { id: '123' } },
+      data: { type: 'order', action: 'order.processed', data: { id: 'ORD123' } },
     });
     expect(res.status()).toBe(401);
   });

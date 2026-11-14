@@ -95,3 +95,95 @@ test('assinatura de tamanho diferente não quebra a comparação', () => {
   });
   assert.equal(result.valid, false);
 });
+
+// ─── API de Orders ───────────────────────────────────────────
+
+import {
+  normalizeOrderStatus,
+  toExternalReference,
+  fromExternalReference,
+  buildOrderLines,
+} from '../mercadopago';
+import type { CreateCheckoutInput } from '../types';
+
+test('order: status processado/creditado é aprovado', () => {
+  assert.equal(normalizeOrderStatus('processed', 'accredited'), 'approved');
+});
+
+test('order: estorno total e chargeback viram refunded; parcial segue pago', () => {
+  assert.equal(normalizeOrderStatus('processed', 'refunded'), 'refunded');
+  assert.equal(normalizeOrderStatus('processed', 'charged_back'), 'refunded');
+  assert.equal(normalizeOrderStatus('processed', 'partially_refunded'), 'approved');
+});
+
+test('order: falha, cancelamento e estados intermediários', () => {
+  assert.equal(normalizeOrderStatus('failed', 'processing_error'), 'rejected');
+  assert.equal(normalizeOrderStatus('canceled', 'canceled'), 'cancelled');
+  assert.equal(normalizeOrderStatus('created', 'created'), 'pending');
+  assert.equal(normalizeOrderStatus('action_required', 'waiting_payment'), 'pending');
+  assert.equal(normalizeOrderStatus('processing', 'in_process'), 'pending');
+  assert.equal(normalizeOrderStatus(undefined), 'pending');
+});
+
+test('order: método vem do tipo quando o id não basta', () => {
+  assert.equal(normalizeMethod('pix', 'bank_transfer'), 'pix');
+  assert.equal(normalizeMethod('bolbradesco', 'ticket'), 'boleto');
+  assert.equal(normalizeMethod('visa', 'debit_card'), 'debit_card');
+  assert.equal(normalizeMethod('visa', 'credit_card'), 'credit_card');
+  assert.equal(normalizeMethod(undefined, 'credit_card'), 'credit_card');
+});
+
+test('referência externa: UUID vai sem hífens e volta igual', () => {
+  const id = '3f2b8c1e-4a5d-4e6f-9a0b-1c2d3e4f5a6b';
+  const ref = toExternalReference(id);
+  assert.match(ref, /^[0-9a-f]{32}$/);
+  assert.equal(fromExternalReference(ref), id);
+  assert.equal(fromExternalReference(ref.toUpperCase()), id);
+  assert.equal(fromExternalReference('outra-coisa'), 'outra-coisa');
+});
+
+test('assinatura de order aceita data.id em minúsculas', () => {
+  const lower = signedParams({ dataId: 'ord01jyh1z1yjn' });
+  assert.equal(verifyMercadoPagoSignature({ ...lower, dataId: 'ORD01JYH1Z1YJN' }).valid, true);
+  const upper = signedParams({ dataId: 'ORD01JYH1Z1YJN' });
+  assert.equal(verifyMercadoPagoSignature(upper).valid, true);
+});
+
+const baseInput: CreateCheckoutInput = {
+  orderId: '3f2b8c1e-4a5d-4e6f-9a0b-1c2d3e4f5a6b',
+  orderNumber: 'PDL-10001',
+  items: [
+    { id: 'p1', title: 'Vestido (tam. 4)', quantity: 2, unitPriceCentavos: 27000 },
+    { id: 'p2', title: 'Bata (tam. 2)', quantity: 1, unitPriceCentavos: 18990 },
+  ],
+  totalCentavos: 2 * 27000 + 18990 + 2400,
+  freightCentavos: 2400,
+  discountCentavos: 0,
+  payerEmail: 'ana@exemplo.com',
+  successUrl: 's', failureUrl: 'f', pendingUrl: 'p', notificationUrl: 'n',
+};
+
+const sumLines = (lines: ReturnType<typeof buildOrderLines>) =>
+  lines.reduce((n, l) => n + Math.round(Number(l.unit_price) * 100) * l.quantity, 0);
+
+test('itens da order: sem desconto, peças e frete separados somando o total', () => {
+  const lines = buildOrderLines(baseInput);
+  assert.equal(lines.length, 3);
+  assert.equal(lines[2].external_code, 'frete');
+  assert.equal(lines[1].unit_price, '189.90');
+  assert.equal(sumLines(lines), baseInput.totalCentavos);
+});
+
+test('itens da order: com desconto, uma linha com o total final', () => {
+  const input = { ...baseInput, discountCentavos: 5000, totalCentavos: baseInput.totalCentavos - 5000 };
+  const lines = buildOrderLines(input);
+  assert.equal(lines.length, 1);
+  assert.equal(sumLines(lines), input.totalCentavos);
+});
+
+test('itens da order: total que não fecha cai na linha única', () => {
+  const input = { ...baseInput, totalCentavos: baseInput.totalCentavos + 1 };
+  const lines = buildOrderLines(input);
+  assert.equal(lines.length, 1);
+  assert.equal(sumLines(lines), input.totalCentavos);
+});
