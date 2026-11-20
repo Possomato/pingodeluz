@@ -255,7 +255,7 @@ select.pdl-field { padding-right: 40px; background-image: url("data:image/svg+xm
 /* Abertura da home: a peça da vez, com cara de vitrine de ateliê —
    foto em arco, título grande em serifa e quase nenhum ruído. */
 .pdl-hero { display: block; padding: 12px var(--gutter) 0; cursor: pointer; }
-.pdl-hero-media { position: relative; aspect-ratio: 4 / 5; max-width: 420px; margin: 0 auto; border-radius: 999px 999px var(--r-lg) var(--r-lg); overflow: hidden; background: var(--cream-deep); box-shadow: 0 0 0 1px var(--border-soft), 0 0 0 8px var(--cream-warm), 0 0 0 9px var(--border-soft); }
+.pdl-hero-media { position: relative; aspect-ratio: 4 / 5; max-width: 420px; margin: 0 auto; border-radius: var(--r-lg); overflow: hidden; background: var(--cream-deep); box-shadow: 0 0 0 1px var(--border-soft), 0 0 0 8px var(--cream-warm), 0 0 0 9px var(--border-soft); }
 .pdl-hero-media .pdl-img { position: absolute; inset: 0; transition: transform 1.1s var(--ease); }
 .pdl-hero-body { padding: 34px 2px 0; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .pdl-hero-eyebrow { font-family: var(--sans); font-size: 10px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--terra); display: flex; align-items: center; gap: 10px; }
