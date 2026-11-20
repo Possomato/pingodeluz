@@ -268,7 +268,7 @@ const CardFields = forwardRef<CardFieldsHandle, {
         <button type="button" className="pdl-link" onClick={() => { setStatus('loading'); setAttempt((a) => a + 1); }}>
           tente de novo
         </button>
-        {' '}— ou escolha Pix ou boleto.
+        {' '}— ou pague com Pix.
       </div>
     );
   }

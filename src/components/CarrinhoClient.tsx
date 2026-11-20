@@ -8,7 +8,7 @@ import PdlImg from '@/components/PdlImg';
 import { IconArrowRight, IconLock } from '@/components/Icons';
 import { useCart } from '@/context/CartContext';
 import { formatCentavos } from '@/lib/money';
-import { computeFreight, amountUntilFreeShipping, type ShippingConfig } from '@/lib/pricing';
+import { computeFreight, computePixDiscount, amountUntilFreeShipping, type ShippingConfig } from '@/lib/pricing';
 import { calcInstallments, type PaymentConfig } from '@/lib/data';
 import { checkCouponAction } from '@/app/actions/coupons';
 
@@ -62,6 +62,7 @@ export default function CarrinhoClient({
     ? Math.min(100, Math.round((subtotalCentavos / shipping.freeAboveCentavos) * 100))
     : 100;
   const installments = calcInstallments(totalCentavos, payment);
+  const pixTotalCentavos = totalCentavos - computePixDiscount(subtotalCentavos, discountCentavos, shipping);
 
   const applyCoupon = async () => {
     const code = couponInput.trim().toUpperCase();
@@ -222,6 +223,12 @@ export default function CarrinhoClient({
                     {installments && <span className="installments">ou {installments}</span>}
                   </span>
                 </div>
+                {pixTotalCentavos < totalCentavos && (
+                  <div className="pdl-pix-badge pdl-pix-badge--block">
+                    <strong>{formatCentavos(pixTotalCentavos)}</strong> pagando com Pix
+                    <span>{shipping.pixDiscountPercent}% de desconto · você escolhe na próxima etapa</span>
+                  </div>
+                )}
               </div>
 
               <div className="pdl-cart-cta">
@@ -230,7 +237,7 @@ export default function CarrinhoClient({
                 </button>
                 <div className="pdl-cart-secure">
                   <IconLock size={12} />
-                  compra segura · pix, cartão ou boleto
+                  compra segura · pix ou cartão
                 </div>
               </div>
             </aside>

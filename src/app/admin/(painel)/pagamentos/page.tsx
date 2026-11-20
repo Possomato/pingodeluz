@@ -4,18 +4,23 @@ import { useState } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { useAdmin } from '@/context/AdminContext';
 import { formatCentavos } from '@/lib/money';
-import { calcInstallments, PaymentConfig } from '@/lib/data';
+import {
+  calcInstallments,
+  maxInstallmentsFor,
+  SMALL_ORDER_LIMIT_CENTAVOS,
+  SMALL_ORDER_MAX_PARCELAS,
+  type PaymentConfig,
+} from '@/lib/data';
 
-// Valores de referência só para pré-visualizar a regra de parcelamento.
-const PREVIEW_PRICES_CENTAVOS = [8900, 15900, 25000];
+// Valores só para mostrar como a regra fica na loja.
+const PREVIEW_PRICES_CENTAVOS = [12000, 27000, 30000, 54000];
 
 export default function PagamentosPage() {
   const { paymentConfig, updatePaymentConfig, loading } = useAdmin();
 
-  if (loading) return <AdminLayout><p style={{ color: '#888' }}>Carregando…</p></AdminLayout>;
+  if (loading) return <AdminLayout><p className="adm-muted">Carregando…</p></AdminLayout>;
 
-  // A `key` remonta o formulário quando a configuração chega do banco,
-  // no lugar de um efeito que copiava props para estado.
+  // A `key` remonta o formulário quando a configuração chega do banco.
   return (
     <PagamentosForm
       key={`${paymentConfig.maxParcelas}-${paymentConfig.parcelaMinimaCentavos}-${paymentConfig.juros}`}
@@ -25,96 +30,88 @@ export default function PagamentosPage() {
   );
 }
 
-function PagamentosForm({
-  initial,
-  onSave,
-}: {
-  initial: PaymentConfig;
-  onSave: (c: PaymentConfig) => void;
-}) {
+function PagamentosForm({ initial, onSave }: { initial: PaymentConfig; onSave: (c: PaymentConfig) => Promise<void> }) {
   const [form, setForm] = useState<PaymentConfig>(initial);
-  const [toast, setToast] = useState(false);
-
-  const set = <K extends keyof PaymentConfig>(k: K, v: PaymentConfig[K]) =>
+  const [saved, setSaved] = useState(false);
+  const set = <K extends keyof PaymentConfig>(k: K, v: PaymentConfig[K]) => {
     setForm(f => ({ ...f, [k]: v }));
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(form);
-    setToast(true);
-    setTimeout(() => setToast(false), 2000);
+    setSaved(false);
   };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await onSave(form);
+    setSaved(true);
+  };
+
+  const semJuros = form.juros === 'sem';
 
   return (
     <AdminLayout>
-      <div className="adm-list-bar">
-        <h1 className="adm-page-title">Configuração de <em>pagamentos</em></h1>
-      </div>
+      <h1 className="adm-page-title">Parcelamento</h1>
+      <p className="adm-page-sub">
+        Em quantas vezes a cliente pode parcelar no cartão. Compras abaixo
+        de {formatCentavos(SMALL_ORDER_LIMIT_CENTAVOS)} parcelam em até {SMALL_ORDER_MAX_PARCELAS}x;
+        a partir disso, até o máximo abaixo.
+      </p>
 
-      <form className="adm-form" onSubmit={handleSave} style={{ maxWidth: 480 }}>
-        <div className="adm-form-row">
+      <form className="adm-stack" onSubmit={handleSave} style={{ maxWidth: 620 }}>
+        <section className="adm-section">
+          <div className="adm-form-row">
+            <div className="adm-field">
+              <label htmlFor="max-parcelas">Máximo de parcelas</label>
+              <input id="max-parcelas" type="number" min={1} max={12} value={form.maxParcelas}
+                onChange={e => set('maxParcelas', Math.max(1, Math.min(12, parseInt(e.target.value) || 1)))} />
+              <span className="adm-hint">Vale para compras a partir de {formatCentavos(SMALL_ORDER_LIMIT_CENTAVOS)}.</span>
+            </div>
+            <div className="adm-field">
+              <label htmlFor="parcela-min">Parcela mínima</label>
+              <div className="adm-price">
+                <span>R$</span>
+                <input id="parcela-min" type="number" min={0} step={1} value={form.parcelaMinimaCentavos / 100}
+                  onChange={e => set('parcelaMinimaCentavos', Math.round((parseFloat(e.target.value) || 0) * 100))} />
+              </div>
+              <span className="adm-hint">Nenhuma parcela fica abaixo deste valor.</span>
+            </div>
+          </div>
+
           <div className="adm-field">
-            <label>Máximo de parcelas</label>
-            <input
-              type="number" min={1} max={12}
-              value={form.maxParcelas}
-              onChange={e => set('maxParcelas', parseInt(e.target.value) || 1)}
-            />
+            <span className="adm-label">Quem paga os juros das parcelas</span>
+            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontWeight: 400 }}>
+              <input type="radio" name="juros" checked={!semJuros} onChange={() => set('juros', 0)} style={{ marginTop: 4 }} />
+              <span><strong>A cliente</strong> — nas taxas do Mercado Pago. A loja anuncia &ldquo;em até Nx no cartão&rdquo;.</span>
+            </label>
+            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontWeight: 400 }}>
+              <input type="radio" name="juros" checked={semJuros} onChange={() => set('juros', 'sem')} style={{ marginTop: 4 }} />
+              <span><strong>A loja</strong> — a loja anuncia &ldquo;sem juros&rdquo;.</span>
+            </label>
+            <span className="adm-hint">
+              Precisa ser igual ao que está configurado na sua conta do Mercado Pago, em Custos → Cartão de crédito → Parcelado.
+              Senão a loja anuncia uma coisa e a cliente paga outra.
+            </span>
           </div>
-          <div className="adm-field">
-            <label htmlFor="parcela-min">Parcela mínima (R$)</label>
-            <input
-              id="parcela-min"
-              type="number" min={0} step={0.01}
-              value={form.parcelaMinimaCentavos / 100}
-              onChange={e =>
-                set('parcelaMinimaCentavos', Math.round((parseFloat(e.target.value) || 0) * 100))
-              }
-            />
-          </div>
-        </div>
+        </section>
 
-        <div className="adm-field">
-          <label>Juros</label>
-          <select
-            value={form.juros === 'sem' ? 'sem' : 'com'}
-            onChange={e => set('juros', e.target.value === 'sem' ? 'sem' : 0)}
-          >
-            <option value="sem">Sem juros</option>
-            <option value="com">Com juros (% a.m.)</option>
-          </select>
-          {form.juros !== 'sem' && (
-            <input
-              type="number" min={0} step={0.1}
-              value={typeof form.juros === 'number' ? form.juros : 0}
-              onChange={e => set('juros', parseFloat(e.target.value) || 0)}
-              placeholder="ex: 1.5"
-              style={{ marginTop: 6 }}
-            />
-          )}
-        </div>
+        <section className="adm-section">
+          <div className="adm-section-head"><div><h2>Como fica na loja</h2></div></div>
+          <table className="adm-table">
+            <thead><tr><th>Peça de</th><th>Parcelas</th><th>Texto na vitrine</th></tr></thead>
+            <tbody>
+              {PREVIEW_PRICES_CENTAVOS.map(price => (
+                <tr key={price}>
+                  <td>{formatCentavos(price)}</td>
+                  <td>até {maxInstallmentsFor(price, form)}x</td>
+                  <td className="adm-muted">{calcInstallments(price, form) ?? 'só à vista'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
 
-        <div className="adm-field">
-          <label style={{ marginBottom: 8, display: 'block' }}>Preview</label>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {PREVIEW_PRICES_CENTAVOS.map(price => {
-              const result = calcInstallments(price, form);
-              return (
-                <div key={price} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontFamily: 'var(--sans)', fontWeight: 600, fontSize: 13, minWidth: 64 }}>{formatCentavos(price)}</span>
-                  <span style={{ fontSize: 13, color: result ? 'var(--ink)' : 'var(--muted)' }}>
-                    {result ?? '— sem parcelamento'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+        <div className="adm-form-actions" style={{ alignItems: 'center' }}>
+          <button type="submit" className="adm-btn adm-btn-primary adm-btn-lg">Salvar</button>
+          {saved && <span className="adm-pill ok" role="status">✓ salvo</span>}
         </div>
-
-        <div className="adm-form-actions">
-          <button type="submit" className="adm-btn adm-btn-primary">Salvar configuração</button>
-        </div>
-        {toast && <div className="adm-toast">Configuração salva!</div>}
       </form>
     </AdminLayout>
   );

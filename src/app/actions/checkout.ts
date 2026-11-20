@@ -11,7 +11,7 @@ import {
 import { processPaymentNotification } from '@/lib/payments/process-notification';
 import { computeTotals, type ShippingConfig } from '@/lib/pricing';
 import { normalizeCouponCode, validateCoupon, type Coupon } from '@/lib/coupon';
-import { fetchPaymentConfig, rowToProduct } from '@/lib/data';
+import { fetchPaymentConfig, maxInstallmentsFor, rowToProduct } from '@/lib/data';
 import { isValidCPF, onlyDigits } from '@/lib/cpf';
 
 /**
@@ -44,8 +44,17 @@ export interface CheckoutAddress {
 export interface QuoteResult {
   subtotalCentavos: number;
   freightCentavos: number;
+  /** Desconto do cupom. */
   discountCentavos: number;
+  /** Desconto do Pix; zero quando o meio escolhido não é Pix. */
+  pixDiscountCentavos: number;
+  /** Total no meio escolhido. */
   totalCentavos: number;
+  /** Quanto ficaria pagando com Pix, para a tela mostrar a vantagem. */
+  pixTotalCentavos: number;
+  /** Quanto ficaria no cartão (sem o desconto do Pix). */
+  cardTotalCentavos: number;
+  pixDiscountPercent: number;
   items: {
     id: string;
     name: string;
@@ -169,7 +178,8 @@ async function resolveCoupon(
  */
 export async function quoteCheckoutAction(
   lines: CartLine[],
-  couponCode?: string
+  couponCode?: string,
+  method: 'pix' | 'card' = 'pix'
 ): Promise<QuoteResult> {
   const service = createServiceClient();
 
@@ -184,10 +194,15 @@ export async function quoteCheckoutAction(
     subtotalCentavos
   );
 
-  const totals = computeTotals(subtotalCentavos, shipping, coupon);
+  const pixTotals = computeTotals(subtotalCentavos, shipping, coupon, { pix: true });
+  const cardTotals = computeTotals(subtotalCentavos, shipping, coupon);
+  const totals = method === 'pix' ? pixTotals : cardTotals;
 
   return {
     ...totals,
+    pixTotalCentavos: pixTotals.totalCentavos,
+    cardTotalCentavos: cardTotals.totalCentavos,
+    pixDiscountPercent: shipping.pixDiscountPercent,
     items: items.map(({ id, name, size, qty, unitPriceCentavos, lineTotalCentavos }) => ({
       id,
       name,
@@ -206,7 +221,7 @@ export async function quoteCheckoutAction(
 export interface CheckoutPayment {
   /** CPF de quem paga. */
   cpf: string;
-  method: 'pix' | 'boleto' | 'card';
+  method: 'pix' | 'card';
   /** Só no cartão: token gerado no navegador pelos campos seguros. */
   card?: {
     token: string;
@@ -267,23 +282,15 @@ export async function createOrderAction(
     return { status: 'error', code: 'cpf', message: 'Confira o CPF: os números não parecem corretos.' };
   }
 
-  let method: PaymentMethodInput;
-  if (payment.method === 'card') {
-    if (!payment.card?.token || !payment.card.brand) {
-      return { status: 'error', code: 'payment', message: 'Não conseguimos ler os dados do cartão. Confira e tente de novo.' };
-    }
-    const { maxParcelas } = await fetchPaymentConfig();
-    const installments = Math.min(Math.max(1, Math.floor(payment.card.installments || 1)), Math.max(1, maxParcelas));
-    method = {
-      kind: 'card',
-      token: payment.card.token,
-      brand: payment.card.brand,
-      cardType: payment.card.cardType === 'debit_card' ? 'debit_card' : 'credit_card',
-      installments,
-    };
-  } else {
-    method = { kind: payment.method === 'boleto' ? 'boleto' : 'pix' };
+  // A loja aceita Pix e cartão. Boleto saiu do checkout; o adaptador
+  // continua sabendo ler pedidos antigos pagos assim.
+  if (payment.method !== 'pix' && payment.method !== 'card') {
+    return { status: 'error', code: 'payment', message: 'Escolha Pix ou cartão para pagar.' };
   }
+  if (payment.method === 'card' && (!payment.card?.token || !payment.card.brand)) {
+    return { status: 'error', code: 'payment', message: 'Não conseguimos ler os dados do cartão. Confira e tente de novo.' };
+  }
+  const isPix = payment.method === 'pix';
 
   const service = createServiceClient();
 
@@ -315,7 +322,7 @@ export async function createOrderAction(
   );
   if (couponError) return { status: 'error', code: 'coupon', message: couponError };
 
-  const totals = computeTotals(subtotalCentavos, shipping, coupon);
+  const totals = computeTotals(subtotalCentavos, shipping, coupon, { pix: isPix });
 
   // Consome o cupom antes de criar o pedido. Se estourou o limite entre
   // a cotação e agora, o desconto é desfeito em vez de dado de graça.
@@ -325,8 +332,24 @@ export async function createOrderAction(
     const { data: consumed } = await service.rpc('consume_coupon', { p_code: coupon.code });
     if (!consumed) {
       appliedCoupon = null;
-      appliedTotals = computeTotals(subtotalCentavos, shipping, null);
+      appliedTotals = computeTotals(subtotalCentavos, shipping, null, { pix: isPix });
     }
+  }
+
+  // Parcelas: o servidor reaplica a regra da loja sobre o total real,
+  // seja qual for o número que a tela enviou.
+  let method: PaymentMethodInput;
+  if (isPix) {
+    method = { kind: 'pix' };
+  } else {
+    const maxInstallments = maxInstallmentsFor(appliedTotals.totalCentavos, await fetchPaymentConfig());
+    method = {
+      kind: 'card',
+      token: payment.card!.token,
+      brand: payment.card!.brand,
+      cardType: payment.card!.cardType === 'debit_card' ? 'debit_card' : 'credit_card',
+      installments: Math.min(Math.max(1, Math.floor(payment.card!.installments || 1)), maxInstallments),
+    };
   }
 
   const { data: numberRow } = await service.rpc('next_order_number');
@@ -342,7 +365,8 @@ export async function createOrderAction(
       address,
       subtotal_centavos: appliedTotals.subtotalCentavos,
       freight_centavos: appliedTotals.freightCentavos,
-      discount_centavos: appliedTotals.discountCentavos,
+      // Cupom + Pix: assim subtotal + frete − desconto = total, sempre.
+      discount_centavos: appliedTotals.discountCentavos + appliedTotals.pixDiscountCentavos,
       total_centavos: appliedTotals.totalCentavos,
       total: appliedTotals.totalCentavos / 100,
       coupon_code: appliedCoupon?.code ?? null,
@@ -369,7 +393,7 @@ export async function createOrderAction(
       })),
       totalCentavos: appliedTotals.totalCentavos,
       freightCentavos: appliedTotals.freightCentavos,
-      discountCentavos: appliedTotals.discountCentavos,
+      discountCentavos: appliedTotals.discountCentavos + appliedTotals.pixDiscountCentavos,
       payer: {
         email: address.email || user.email || '',
         name: address.name,

@@ -21,7 +21,7 @@ export default async function CheckoutPage({
   return <CheckoutClient
       savedAddresses={addresses}
       profile={profile}
-      maxInstallments={paymentConfig.maxParcelas}
+      paymentConfig={paymentConfig}
       paymentFailed={error === 'pagamento'}
     />;
 }

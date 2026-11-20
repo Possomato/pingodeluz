@@ -10,6 +10,7 @@ import { Sparkle, IconArrowRight } from '@/components/Icons';
 import { calcInstallments, isSizeAvailable, isSoldOut } from '@/lib/data';
 import type { Product, Collection, HomepageSection, HomepageSectionId, Testimonial, PaymentConfig } from '@/lib/data';
 import { formatCentavos } from '@/lib/money';
+import { pixPriceCentavos, type ShippingConfig } from '@/lib/pricing';
 
 interface Props {
   hpConfig: Record<HomepageSectionId, HomepageSection>;
@@ -17,11 +18,12 @@ interface Props {
   /** Peça que abre a home (a mais vendida com estoque). */
   featured: Product | null;
   paymentConfig: PaymentConfig;
+  shipping: ShippingConfig;
   collections: Record<string, Collection>;
   testimonials: Testimonial[];
 }
 
-export default function HomeClient({ hpConfig, products, featured, paymentConfig, collections, testimonials }: Props) {
+export default function HomeClient({ hpConfig, products, featured, paymentConfig, shipping, collections, testimonials }: Props) {
   const [testIdx, setTestIdx] = useState(0);
   const collectionList = Object.values(collections);
 
@@ -52,6 +54,12 @@ export default function HomeClient({ hpConfig, products, featured, paymentConfig
               <span className="now">{formatCentavos(featured.priceCentavos)}</span>
               {featuredInstallments && <span className="inst">ou {featuredInstallments}</span>}
             </div>
+            {shipping.pixDiscountPercent > 0 && (
+              <div className="pdl-pix-badge">
+                <strong>{formatCentavos(pixPriceCentavos(featured.priceCentavos, shipping))}</strong> no Pix
+                <span>{shipping.pixDiscountPercent}% de desconto</span>
+              </div>
+            )}
             <div className="pdl-hero-meta">
               <span>{featured.col}</span>
               {featuredSizes.length > 0 && <span>tamanhos {featuredSizes.join(' · ')}</span>}

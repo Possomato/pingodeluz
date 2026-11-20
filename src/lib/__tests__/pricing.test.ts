@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { computeDiscount, validateCoupon, type Coupon } from '../coupon';
-import { computeFreight, computeTotals } from '../pricing';
+import { computeFreight, computeTotals, computePixDiscount, pixPriceCentavos } from '../pricing';
+import { calcInstallments, maxInstallmentsFor, type PaymentConfig } from '../data';
 import type { ShippingConfig } from '../pricing';
 
 const SHIPPING: ShippingConfig = {
@@ -95,6 +96,7 @@ test('total soma frete e subtrai desconto', () => {
     subtotalCentavos: 10000,
     freightCentavos: 2400,
     discountCentavos: 1000,
+    pixDiscountCentavos: 0,
     totalCentavos: 11400,
   });
 });
@@ -115,4 +117,56 @@ test('sem cupom o desconto é zero', () => {
 test('total nunca fica negativo', () => {
   const t = computeTotals(1000, SHIPPING, coupon({ kind: 'fixed', value: 99000 }));
   assert.ok(t.totalCentavos >= 0);
+});
+
+// ─── Pix ─────────────────────────────────────────────────────
+
+test('Pix: 5% sobre as peças, sem tocar no frete', () => {
+  const t = computeTotals(20000, SHIPPING, null, { pix: true });
+  assert.equal(t.freightCentavos, 2400);
+  assert.equal(t.pixDiscountCentavos, 1000);
+  assert.equal(t.totalCentavos, 20000 + 2400 - 1000);
+});
+
+test('Pix: desconto calculado depois do cupom', () => {
+  const t = computeTotals(30000, SHIPPING, coupon({ value: 10 }), { pix: true });
+  assert.equal(t.discountCentavos, 3000);
+  assert.equal(t.pixDiscountCentavos, 1350);
+  assert.equal(t.totalCentavos, 30000 - 3000 - 1350);
+});
+
+test('Pix: outros meios não têm desconto', () => {
+  assert.equal(computeTotals(27000, SHIPPING, null).pixDiscountCentavos, 0);
+  assert.equal(computeTotals(27000, SHIPPING, null, { pix: false }).totalCentavos, 27000);
+});
+
+test('Pix: preço da vitrine e limites do percentual', () => {
+  assert.equal(pixPriceCentavos(27000, SHIPPING), 25650);
+  assert.equal(computePixDiscount(27000, 0, { pixDiscountPercent: 0 }), 0);
+  assert.equal(computePixDiscount(27000, 30000, SHIPPING), 0);
+});
+
+// ─── Parcelamento ────────────────────────────────────────────
+
+const PAY: PaymentConfig = { maxParcelas: 6, parcelaMinimaCentavos: 5000, juros: 0 };
+
+test('parcelas: até 3x abaixo de R$ 300, até 6x a partir disso', () => {
+  assert.equal(maxInstallmentsFor(27000, PAY), 3);
+  assert.equal(maxInstallmentsFor(29999, PAY), 3);
+  assert.equal(maxInstallmentsFor(30000, PAY), 6);
+  assert.equal(maxInstallmentsFor(90000, PAY), 6);
+});
+
+test('parcelas: respeitam a parcela mínima e o teto da loja', () => {
+  assert.equal(maxInstallmentsFor(12000, PAY), 2);
+  assert.equal(maxInstallmentsFor(4000, PAY), 1);
+  assert.equal(maxInstallmentsFor(90000, { ...PAY, maxParcelas: 4 }), 4);
+  assert.equal(maxInstallmentsFor(0, PAY), 1);
+});
+
+test('texto de parcelas: com juros só anuncia o número de vezes', () => {
+  assert.equal(calcInstallments(27000, PAY), 'em até 3x no cartão');
+  assert.equal(calcInstallments(36000, PAY), 'em até 6x no cartão');
+  assert.equal(calcInstallments(27000, { ...PAY, juros: 'sem' }), 'em 3x de R$ 90,00 sem juros');
+  assert.equal(calcInstallments(4000, PAY), null);
 });

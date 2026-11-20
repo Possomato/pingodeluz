@@ -1,4 +1,4 @@
-import { fetchCatalog, fetchCollections, fetchHomepageConfig, fetchPaymentConfig, fetchTestimonials } from '@/lib/data';
+import { fetchCatalog, fetchCollections, fetchHomepageConfig, fetchPaymentConfig, fetchShippingConfig, fetchTestimonials } from '@/lib/data';
 import { createServiceClient } from '@/lib/supabase-server';
 import { countSales, pickFeatured } from '@/lib/featured';
 import HomeClient from '@/components/HomeClient';
@@ -22,13 +22,14 @@ async function fetchSales(): Promise<Record<string, number>> {
 }
 
 export default async function HomePage() {
-  const [hpConfig, products, collections, testimonials, sales, paymentConfig] = await Promise.all([
+  const [hpConfig, products, collections, testimonials, sales, paymentConfig, shipping] = await Promise.all([
     fetchHomepageConfig(),
     fetchCatalog(),
     fetchCollections(),
     fetchTestimonials(),
     fetchSales(),
     fetchPaymentConfig(),
+    fetchShippingConfig(),
   ]);
 
   return (
@@ -37,6 +38,7 @@ export default async function HomePage() {
       products={products}
       featured={pickFeatured(products, sales)}
       paymentConfig={paymentConfig}
+      shipping={shipping}
       collections={collections}
       testimonials={testimonials}
     />

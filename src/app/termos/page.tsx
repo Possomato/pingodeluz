@@ -30,7 +30,7 @@ export default function TermosPage() {
             Preços e pagamento
           </h2>
           <p>
-            Os preços são em reais e já definidos no momento da compra; o valor final, com frete e descontos, é exibido antes da finalização. O pagamento é processado pelo Mercado Pago por Pix, cartão ou boleto. O pedido é confirmado após a aprovação do pagamento.
+            Os preços são em reais e já definidos no momento da compra; o valor final, com frete e descontos, é exibido antes da finalização. O pagamento é processado pelo Mercado Pago por Pix ou cartão. O pedido é confirmado após a aprovação do pagamento.
           </p>
 
           <h2>

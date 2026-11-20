@@ -10,7 +10,7 @@ import { IconChevronDown, IconChevronLeft, IconArrowRight, IconBag, IconLock } f
 import { calcInstallments, isSizeAvailable, isSoldOut } from '@/lib/data';
 import { formatCentavos } from '@/lib/money';
 import type { Product, SizeTable, PaymentConfig } from '@/lib/data';
-import type { ShippingConfig } from '@/lib/pricing';
+import { pixPriceCentavos, type ShippingConfig } from '@/lib/pricing';
 import { useCart } from '@/context/CartContext';
 import { isFavoritedAction } from '@/app/actions/favorites';
 
@@ -246,6 +246,12 @@ export default function ProdutoClient({
               <span className="now">{formatCentavos(p.priceCentavos)}</span>
               {installments && <span className="installments">ou {installments}</span>}
             </div>
+            {shipping.pixDiscountPercent > 0 && (
+              <div className="pdl-pix-badge">
+                <strong>{formatCentavos(pixPriceCentavos(p.priceCentavos, shipping))}</strong> no Pix
+                <span>{shipping.pixDiscountPercent}% de desconto</span>
+              </div>
+            )}
 
             {/* Tamanho */}
             <div className="pdl-prodpage-section" ref={sizesRef}>

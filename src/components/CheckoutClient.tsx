@@ -12,6 +12,7 @@ import { formatCEP, isValidCEP, fetchCEPData, extractAddressFromCEP } from '@/li
 import { formatCPF, isValidCPF, onlyDigits } from '@/lib/cpf';
 import { createOrderAction, quoteCheckoutAction, type QuoteResult, type CheckoutPayment } from '@/app/actions/checkout';
 import type { PaymentRejection } from '@/lib/payments';
+import { maxInstallmentsFor, type PaymentConfig } from '@/lib/data';
 import { saveAddressAction, type Address } from '@/app/actions/addresses';
 
 interface Profile {
@@ -31,16 +32,15 @@ const EMPTY_ADDRESS = {
 };
 
 type Step = 1 | 2;
-type Method = 'pix' | 'card' | 'boleto';
+type Method = 'pix' | 'card';
 
 // Chave pública: identifica a loja no navegador e só serve para gerar o
 // token do cartão. Pode (e precisa) ir no bundle do cliente.
 const MP_PUBLIC_KEY = process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ?? '';
 
-const METHODS: { id: Method; name: string; desc: string; tag?: string }[] = [
-  { id: 'pix', name: 'Pix', desc: 'Você paga pelo aplicativo do seu banco.', tag: 'aprovação na hora' },
-  { id: 'card', name: 'Cartão de crédito', desc: 'Pague à vista ou parcele, direto aqui na loja.' },
-  { id: 'boleto', name: 'Boleto', desc: 'Pague no banco, na lotérica ou pelo aplicativo. Aprovação em até 2 dias úteis.' },
+const METHODS: { id: Method; name: string }[] = [
+  { id: 'pix', name: 'Pix' },
+  { id: 'card', name: 'Cartão de crédito' },
 ];
 
 // Toda recusa termina dizendo o que a pessoa mais quer saber: nada foi cobrado.
@@ -56,13 +56,13 @@ const REJECTION_MESSAGE: Record<PaymentRejection, string> = {
 export default function CheckoutClient({
   savedAddresses,
   profile,
-  maxInstallments,
+  paymentConfig,
   paymentFailed = false,
 }: {
   savedAddresses: Address[];
   profile: Profile | null;
-  /** Máximo de parcelas definido no admin. */
-  maxInstallments: number;
+  /** Regra de parcelas da loja (admin → parcelamento). */
+  paymentConfig: PaymentConfig;
   /** Volta do provedor com pagamento recusado/abandonado (?error=pagamento). */
   paymentFailed?: boolean;
 }) {
@@ -112,7 +112,8 @@ export default function CheckoutClient({
     try {
       const result = await quoteCheckoutAction(
         cart.map((i) => ({ id: i.pid, size: i.size, qty: i.qty })),
-        appliedCoupon
+        appliedCoupon,
+        method
       );
       setQuote(result);
       if (result.couponError) setCouponCode(null);
@@ -121,7 +122,7 @@ export default function CheckoutClient({
     } finally {
       setQuoteLoading(false);
     }
-  }, [cart, appliedCoupon, hydrated, setCouponCode]);
+  }, [cart, appliedCoupon, hydrated, setCouponCode, method]);
 
   // Recotar sempre que carrinho ou cupom mudarem. O estado só é gravado
   // depois do await, dentro de refreshQuote.
@@ -277,8 +278,12 @@ export default function CheckoutClient({
   };
 
   const total = quote ? formatCentavos(quote.totalCentavos) : '…';
-  const ctaLabel = method === 'pix' ? `Gerar código Pix · ${total}` : method === 'boleto' ? `Gerar boleto · ${total}` : `Pagar ${total}`;
-  const placingLabel = method === 'pix' ? 'gerando seu Pix…' : method === 'boleto' ? 'gerando seu boleto…' : 'processando o pagamento…';
+  const ctaLabel = method === 'pix' ? `Gerar código Pix · ${total}` : `Pagar ${total}`;
+  const placingLabel = method === 'pix' ? 'gerando seu Pix…' : 'processando o pagamento…';
+  // Parcelas pelo total no cartão: até 3x abaixo de R$ 300, até 6x acima.
+  const cardTotal = quote?.cardTotalCentavos ?? 0;
+  const maxInstallments = maxInstallmentsFor(cardTotal, paymentConfig);
+  const pixSaving = quote ? quote.cardTotalCentavos - quote.pixTotalCentavos : 0;
 
   if (!hydrated) return <div className="pdl-app" style={{ minHeight: '60vh' }} />;
 
@@ -361,6 +366,12 @@ export default function CheckoutClient({
           <span>Frete</span>
           <span>{quote ? (quote.freightCentavos === 0 ? 'grátis' : formatCentavos(quote.freightCentavos)) : '…'}</span>
         </div>
+        {quote && quote.pixDiscountCentavos > 0 && (
+          <div className="pdl-cart-summary-row pdl-pix-row">
+            <span>Desconto Pix ({quote.pixDiscountPercent}%)</span>
+            <span>− {formatCentavos(quote.pixDiscountCentavos)}</span>
+          </div>
+        )}
         {quote && quote.discountCentavos > 0 && (
           <div className="pdl-cart-summary-row" style={{ color: 'var(--terra-deep)' }}>
             <span>Desconto{appliedCoupon ? ` ${appliedCoupon}` : ''}</span>
@@ -527,11 +538,25 @@ export default function CheckoutClient({
                           <span className="text">
                             <span className="name">
                               {m.name}
-                              {m.tag && <span className="tag">{m.tag}</span>}
+                              {m.id === 'pix' && quote && quote.pixDiscountPercent > 0 && (
+                                <span className="tag">{quote.pixDiscountPercent}% de desconto</span>
+                              )}
                             </span>
-                            <span className="desc">
-                              {m.id === 'card' && maxInstallments > 1 ? `Pague à vista ou em até ${maxInstallments}x, direto aqui na loja.` : m.desc}
-                            </span>
+                            {m.id === 'pix' ? (
+                              <span className="desc">
+                                {quote && pixSaving > 0 ? (
+                                  <>
+                                    <strong className="pdl-pix-price">{formatCentavos(quote.pixTotalCentavos)}</strong>{' '}
+                                    <s>{formatCentavos(quote.cardTotalCentavos)}</s> · você economiza {formatCentavos(pixSaving)}
+                                  </>
+                                ) : 'Pague pelo aplicativo do seu banco. Aprovação na hora.'}
+                              </span>
+                            ) : (
+                              <span className="desc">
+                                {quote ? <><strong>{formatCentavos(quote.cardTotalCentavos)}</strong> · </> : null}
+                                {maxInstallments > 1 ? `à vista ou em até ${maxInstallments}x` : 'à vista'}
+                              </span>
+                            )}
                           </span>
                         </button>
                       );
@@ -544,13 +569,13 @@ export default function CheckoutClient({
                         <CardFields
                           ref={cardRef}
                           publicKey={MP_PUBLIC_KEY}
-                          amountCentavos={quote?.totalCentavos ?? 0}
+                          amountCentavos={cardTotal}
                           maxInstallments={maxInstallments}
                           disabled={placing}
                         />
                       ) : (
                         <div className="pdl-note" role="status">
-                          O pagamento com cartão está indisponível no momento. Você pode pagar com Pix ou boleto.
+                          O pagamento com cartão está indisponível no momento. Você pode pagar com Pix.
                         </div>
                       )
                     )}
@@ -580,13 +605,7 @@ export default function CheckoutClient({
                     {method === 'pix' && (
                       <p className="pdl-pay-explain">
                         Na próxima tela mostramos um <strong>código</strong> para você pagar no aplicativo do seu banco.
-                        A confirmação chega em poucos segundos.
-                      </p>
-                    )}
-                    {method === 'boleto' && (
-                      <p className="pdl-pay-explain">
-                        Na próxima tela você recebe o <strong>boleto</strong> para pagar onde preferir.
-                        O pedido é enviado depois que o banco confirmar o pagamento.
+                        A confirmação chega em poucos segundos{pixSaving > 0 ? <>, e você paga <strong>{formatCentavos(pixSaving)} a menos</strong> do que no cartão</> : null}.
                       </p>
                     )}
                   </div>

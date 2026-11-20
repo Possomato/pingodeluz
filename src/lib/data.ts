@@ -128,34 +128,58 @@ export function parseStoredColumns(raw: StoredColumn[]): {
 // ─── Parcelamento ────────────────────────────────────────────
 
 export interface PaymentConfig {
+  /** Teto de parcelas da loja (compras a partir do limite abaixo). */
   maxParcelas: number;
   /** Valor mínimo de cada parcela, em centavos. */
   parcelaMinimaCentavos: number;
+  /**
+   * 'sem': a loja paga os juros e anuncia "sem juros".
+   * número: os juros ficam por conta da cliente, nas taxas do Mercado
+   * Pago (o número não é usado na conta; vem de versões antigas).
+   */
   juros: 'sem' | number;
 }
 
 export const DEFAULT_PAYMENT_CONFIG: PaymentConfig = {
-  maxParcelas: 3,
+  maxParcelas: 6,
   parcelaMinimaCentavos: 5000,
-  juros: 'sem',
+  juros: 0,
 };
 
-/** "em 3x de R$ 90 sem juros" — ou null se não parcela. */
-export function calcInstallments(priceCentavos: number, config: PaymentConfig): string | null {
-  if (!priceCentavos || priceCentavos <= 0) return null;
+/** Compras abaixo deste valor parcelam em menos vezes. */
+export const SMALL_ORDER_LIMIT_CENTAVOS = 30000;
+export const SMALL_ORDER_MAX_PARCELAS = 3;
 
-  for (let n = config.maxParcelas; n >= 2; n--) {
-    const parcela = priceCentavos / n;
-    if (parcela >= config.parcelaMinimaCentavos) {
-      const parcelaFmt = (parcela / 100).toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      });
-      const jurosText = config.juros === 'sem' ? 'sem juros' : `${config.juros}% a.m.`;
-      return `em ${n}x de R$ ${parcelaFmt} ${jurosText}`;
-    }
-  }
-  return null;
+/**
+ * Quantas parcelas uma compra deste valor pode ter: até 3x abaixo de
+ * R$ 300, até o teto da loja a partir disso, e nunca com parcela menor
+ * que o mínimo. Usada na vitrine, no checkout e no servidor.
+ */
+export function maxInstallmentsFor(amountCentavos: number, config: PaymentConfig): number {
+  if (!amountCentavos || amountCentavos <= 0) return 1;
+  const cap = amountCentavos < SMALL_ORDER_LIMIT_CENTAVOS
+    ? Math.min(SMALL_ORDER_MAX_PARCELAS, config.maxParcelas)
+    : config.maxParcelas;
+  const byMinimum = config.parcelaMinimaCentavos > 0
+    ? Math.floor(amountCentavos / config.parcelaMinimaCentavos)
+    : cap;
+  return Math.max(1, Math.min(cap, byMinimum));
+}
+
+/**
+ * Texto de parcelamento da vitrine. Sem juros: "em 3x de R$ 90,00 sem
+ * juros". Com juros por conta da cliente, o valor da parcela depende do
+ * cartão, então só anunciamos o número de vezes: "em até 3x no cartão".
+ */
+export function calcInstallments(priceCentavos: number, config: PaymentConfig): string | null {
+  const n = maxInstallmentsFor(priceCentavos, config);
+  if (n < 2) return null;
+  if (config.juros !== 'sem') return `em até ${n}x no cartão`;
+  const parcelaFmt = (priceCentavos / n / 100).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `em ${n}x de R$ ${parcelaFmt} sem juros`;
 }
 
 // ─── Vitrine ─────────────────────────────────────────────────

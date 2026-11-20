@@ -708,6 +708,20 @@ select.pdl-field { padding-right: 40px; background-image: url("data:image/svg+xm
 .pdl-summary-mobile .pdl-summary-card { border: none; border-top: 1px solid var(--border-soft); border-radius: 0; background: transparent; }
 .pdl-summary-mobile .pdl-summary-head { display: none; }
 
+/* Preço no Pix: o incentivo aparece onde a decisão acontece — na peça,
+   na sacola e na escolha do pagamento — sempre com o valor já calculado. */
+.pdl-pix-badge { margin-top: 10px; display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 4px 8px; padding: 8px 14px; border-radius: var(--r-pill); background: var(--sage-soft); color: #3f5536; font-family: var(--sans); font-size: 14px; }
+.pdl-pix-badge strong { font-size: 16px; font-weight: 700; color: #2f4428; }
+.pdl-pix-badge span { font-size: 12px; font-weight: 600; letter-spacing: 0.02em; opacity: 0.85; }
+.pdl-pix-badge span::before { content: "· "; }
+.pdl-pix-badge--block { display: flex; border-radius: var(--r-md); margin-top: 14px; padding: 12px 14px; }
+.pdl-pix-badge--block span { flex-basis: 100%; }
+.pdl-pix-badge--block span::before { content: ""; }
+.pdl-hero .pdl-pix-badge { margin-top: 12px; }
+.pdl-pix-row { color: #3f5536; font-weight: 600; }
+.pdl-pix-price { color: #2f4428; font-size: 16px; }
+.pdl-pay-option .desc s { color: var(--muted-2); }
+
 /* ─── Pagamento (checkout transparente) ──────────────────────
    Pensado para quem não tem pressa nem vista de 20 anos: texto de 16px
    para cima, rótulos em frase (não em maiúsculas miúdas), alvos de toque
